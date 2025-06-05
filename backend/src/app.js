@@ -1,0 +1,109 @@
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import { PrismaClient } from '@prisma/client';
+import authRoutes, { requireAuth } from './api/auth.js';
+import GoogleOAuthService from './services/GoogleOAuthService.js';
+
+// Load environment variables
+dotenv.config();
+
+const app = express();
+const port = process.env.PORT || 3001;
+const prisma = new PrismaClient();
+const googleOAuth = new GoogleOAuthService();
+
+// Middleware
+app.use(cors({
+  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  credentials: true
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+});
+
+// Auth routes
+app.use('/auth', authRoutes);
+
+// Protected API Routes
+app.get('/api/drive/files', requireAuth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId }
+    });
+
+    if (!user?.googleAccessToken) {
+      return res.status(401).json({ error: 'Google authentication required' });
+    }
+
+    const tokens = {
+      access_token: user.googleAccessToken,
+      refresh_token: user.googleRefreshToken,
+    };
+
+    const files = await googleOAuth.getDriveFiles(tokens);
+    res.json({ files });
+  } catch (error) {
+    console.error('Drive files error:', error);
+    res.status(500).json({ error: 'Failed to fetch drive files' });
+  }
+});
+
+app.get('/api/gmail/messages', requireAuth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId }
+    });
+
+    if (!user?.googleAccessToken) {
+      return res.status(401).json({ error: 'Google authentication required' });
+    }
+
+    const tokens = {
+      access_token: user.googleAccessToken,
+      refresh_token: user.googleRefreshToken,
+    };
+
+    const messages = await googleOAuth.getGmailMessages(tokens);
+    res.json({ messages });
+  } catch (error) {
+    console.error('Gmail messages error:', error);
+    res.status(500).json({ error: 'Failed to fetch gmail messages' });
+  }
+});
+
+app.get('/api/trello/boards', requireAuth, (req, res) => {
+  res.json({ message: 'Trello boards endpoint - coming soon' });
+});
+
+app.post('/api/ai/query', requireAuth, (req, res) => {
+  res.json({ message: 'AI query endpoint - coming soon' });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+app.listen(port, () => {
+  console.log(`🚀 Backend server running on http://localhost:${port}`);
+});
+
+export default app; 

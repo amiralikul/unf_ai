@@ -1,0 +1,101 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  
+  // Google OAuth tokens
+  googleAccessToken  String?
+  googleRefreshToken String?
+  
+  // Trello tokens
+  trelloApiKey String?
+  trelloToken  String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  files   File[]
+  emails  Email[]
+  boards  TrelloBoard[]
+}
+
+model File {
+  id          String   @id @default(cuid())
+  googleId    String   @unique
+  name        String
+  mimeType    String?
+  size        Int?
+  webViewLink String?
+  owners      String   // JSON array of owners
+  modifiedAt  DateTime
+  createdAt   DateTime @default(now())
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([modifiedAt])
+}
+
+model Email {
+  id          String   @id @default(cuid())
+  googleId    String   @unique
+  threadId    String?
+  subject     String
+  sender      String
+  recipient   String
+  body        String?
+  receivedAt  DateTime
+  createdAt   DateTime @default(now())
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([receivedAt])
+}
+
+model TrelloBoard {
+  id       String @id @default(cuid())
+  trelloId String @unique
+  name     String
+  url      String?
+  
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  cards TrelloCard[]
+  
+  @@index([userId])
+}
+
+model TrelloCard {
+  id          String   @id @default(cuid())
+  trelloId    String   @unique
+  name        String
+  description String?
+  listName    String?
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  
+  boardId String
+  board   TrelloBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  
+  @@index([boardId])
+}
