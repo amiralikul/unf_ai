@@ -58,6 +58,8 @@ export const api = {
   
   // Trello boards
   getTrelloBoards: () => apiClient.get('/api/trello/boards'),
+
+  getTrelloCards: (boardId) => apiClient.get(`/api/trello/boards/${boardId}/cards`),
   
   // AI queries
   queryAI: (question) => apiClient.post('/api/ai/query', { question }),

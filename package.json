@@ -4,16 +4,25 @@
   "description": "Full-Stack AI-Powered Drive/Gmail/Trello App",
   "main": "index.js",
   "scripts": {
-    "dev": "pnpm --parallel --filter=./backend --filter=./frontend dev",
+    "dev": "concurrently \"pnpm --filter=./backend dev\" \"pnpm --filter=./frontend dev\"",
     "build": "pnpm --filter=./backend build && pnpm --filter=./frontend build",
     "test": "pnpm --parallel --filter=./backend --filter=./frontend test"
   },
-  "keywords": ["ai", "drive", "gmail", "trello", "full-stack"],
+  "keywords": [
+    "ai",
+    "drive",
+    "gmail",
+    "trello",
+    "full-stack"
+  ],
   "author": "",
   "license": "ISC",
   "packageManager": "pnpm@10.9.0",
   "workspaces": [
     "frontend",
     "backend"
-  ]
+  ],
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
 }

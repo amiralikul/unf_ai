@@ -36,7 +36,7 @@
 - [ ] Create `PATCH /api/drive/files/:id`
 - [ ] Create `DELETE /api/drive/files/:id`
 - [x] Create `GET /api/gmail/messages` (with Google OAuth integration)
-- [ ] Create `GET /api/trello/boards`
+- [x] Create `GET /api/trello/boards`
 - [ ] Create `POST /api/ai/query`
 - [ ] Add Zod validation for query/input payloads
 - [x] Add authentication middleware to protect routes

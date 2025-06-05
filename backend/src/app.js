@@ -6,6 +6,7 @@ import { PrismaClient } from '@prisma/client';
 import authRoutes, { requireAuth } from './api/auth.js';
 import GoogleOAuthService from './services/GoogleOAuthService.js';
 import sessionService from './services/SessionService.js';
+import trelloService from './services/TrelloService.js';
 
 // Load environment variables
 dotenv.config();
@@ -162,11 +163,119 @@ app.get('/api/gmail/messages', requireAuth, async (req, res) => {
   }
 });
 
-app.get('/api/trello/boards', requireAuth, (req, res) => {
-  res.json({ message: 'Trello boards endpoint - coming soon' });
+app.get('/api/trello/boards', requireAuth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId }
+    });
+
+    // if (!user?.trelloApiKey || !user?.trelloToken) {
+    //   return res.status(401).json({ error: 'Trello API key and token required' });
+    // }
+
+
+    const trelloApiKey = process.env.TRELLO_API_KEY;
+    const trelloToken = process.env.TRELLO_TOKEN;
+
+    console.log('trelloApiKey', trelloApiKey);
+    console.log('trelloToken', trelloToken);
+
+
+
+    // const boards = await trelloService.getBoards(user.trelloApiKey, user.trelloToken);
+    const boards = await trelloService.getBoards(trelloApiKey, trelloToken);
+    
+    const savedBoards = [];
+    for (const board of boards) {
+      try {
+        const savedBoard = await prisma.trelloBoard.upsert({
+          where: { trelloId: board.id },
+          update: {
+            name: board.name,
+            url: board.url,
+          },
+          create: {
+            trelloId: board.id,
+            name: board.name,
+            url: board.url,
+            userId: req.user.userId,
+          },
+        });
+        savedBoards.push(savedBoard);
+      } catch (dbError) {
+        console.error('Error saving board:', board.id, dbError);
+      }
+    }
+
+    console.log(`✅ Saved ${savedBoards.length} Trello boards to database`);
+    res.json({ boards: savedBoards.map(b => ({...b, id: b.trelloId})) });
+  } catch (error) {
+    console.error('Trello boards error:', error);
+    res.status(500).json({ error: 'Failed to fetch Trello boards' });
+  }
 });
 
-app.post('/api/ai/query', requireAuth, (req, res) => {
+app.get('/api/trello/boards/:boardId/cards', requireAuth, async (req, res, next) => {
+  const { boardId } = req.params;
+  console.log(`[TRELLO] ==> Request received for cards on board: ${boardId}`);
+  try {
+    const trelloApiKey = process.env.TRELLO_API_KEY;
+    const trelloToken = process.env.TRELLO_TOKEN;
+    console.log(`[TRELLO] Using API Key: ${trelloApiKey.substring(0, 5)}...`);
+
+    const board = await prisma.trelloBoard.findUnique({
+      where: { trelloId: boardId },
+    });
+    console.log('[TRELLO] Database board lookup result:', board);
+
+    if (!board) {
+      console.log('[TRELLO] <== Board not found in local database. Responding with 404.');
+      return res.status(404).json({ error: 'Trello board not found in database' });
+    }
+
+    const cards = await trelloService.getCardsForBoard(trelloApiKey, trelloToken, boardId);
+    console.log(`[TRELLO] Fetched ${cards.length} cards from Trello API.`);
+
+    const savedCards = [];
+    for (const card of cards) {
+      try {
+        const savedCard = await prisma.trelloCard.upsert({
+          where: { trelloId: card.id },
+          update: {
+            name: card.name,
+            description: card.desc,
+            url: card.url,
+            dueDate: card.due ? new Date(card.due) : null,
+          },
+          create: {
+            trelloId: card.id,
+            name: card.name,
+            description: card.desc,
+            url: card.url,
+            dueDate: card.due ? new Date(card.due) : null,
+            board: {
+              connect: { id: board.id },
+            },
+            user: {
+              connect: { id: req.user.userId },
+            },
+          },
+        });
+        savedCards.push(savedCard);
+      } catch (dbError) {
+        console.error('[TRELLO] Error saving card to DB:', card.id, dbError);
+      }
+    }
+
+    console.log(`[TRELLO] <== Successfully saved ${savedCards.length} cards. Responding with cards.`);
+    res.json({ cards: savedCards });
+  } catch (error) {
+    console.error('[TRELLO] <== Error in card fetching process:', error);
+    next(error);
+  }
+});
+
+app.post('/api/ai/query', requireAuth, async (req, res) => {
   res.json({ message: 'AI query endpoint - coming soon' });
 });
 

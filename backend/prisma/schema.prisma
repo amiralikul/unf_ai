@@ -33,6 +33,7 @@ model User {
   files     File[]
   emails    Email[]
   boards    TrelloBoard[]
+  cards     TrelloCard[]
   sessions  Session[]
 }
 
@@ -91,14 +92,19 @@ model TrelloCard {
   trelloId    String   @unique
   name        String
   description String?
+  url         String?
   listName    String?
   dueDate     DateTime?
   createdAt   DateTime @default(now())
   
   boardId String
   board   TrelloBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   @@index([boardId])
+  @@index([userId])
 }
 
 model Session {

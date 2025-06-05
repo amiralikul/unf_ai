@@ -5,6 +5,7 @@ import { useAuth, useGoogleAuthUrl, useLogout, authUtils } from './hooks/useAuth
 import { useDriveFiles } from './hooks/useDriveFiles'
 import { useGmailMessages } from './hooks/useGmailMessages'
 import { useTrelloBoards } from './hooks/useTrelloBoards'
+import { useTrelloCards } from './hooks/useTrelloCards'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -12,8 +13,9 @@ function App() {
   const { data: driveFiles } = useDriveFiles();
   const { data: gmailMessages } = useGmailMessages();
   const { data: trelloBoards } = useTrelloBoards();
+  const { data: trelloCards } = useTrelloCards(trelloBoards?.boards?.[0]?.id);
 
-  console.log('📊 Data:', { driveFiles, gmailMessages, trelloBoards });
+  console.log('📊 Data:', { driveFiles, gmailMessages, trelloBoards, trelloCards });
 
   // Handle OAuth callback on page load
   useEffect(() => {
