@@ -1,80 +1,167 @@
-// Simple in-memory session store (use Redis in production)
+import { PrismaClient } from '@prisma/client';
+import crypto from 'crypto';
+
+// Database-backed session store (survives server restarts)
 class SessionService {
   constructor() {
-    this.sessions = new Map();
+    this.prisma = new PrismaClient();
+    
+    // Start automatic cleanup every 30 minutes
+    this.startCleanupInterval();
   }
 
   // Generate session ID
   generateSessionId() {
-    return Math.random().toString(36).substring(2) + Date.now().toString(36);
+    return crypto.randomBytes(32).toString('hex');
   }
 
   // Create session
-  createSession(userData) {
+  async createSession(userData) {
     const sessionId = this.generateSessionId();
-    this.sessions.set(sessionId, {
-      ...userData,
-      createdAt: new Date(),
-      lastAccessed: new Date()
-    });
-    console.log(`📝 Created session ${sessionId.substring(0, 10)}... for user ${userData.email}`);
-    return sessionId;
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    try {
+      await this.prisma.session.create({
+        data: {
+          sessionId,
+          userId: userData.userId,
+          email: userData.email,
+          name: userData.name,
+          expiresAt,
+        }
+      });
+
+      console.log(`📝 Created database session ${sessionId.substring(0, 10)}... for user ${userData.email}`);
+      return sessionId;
+    } catch (error) {
+      console.error('Error creating session:', error);
+      throw error;
+    }
   }
 
   // Get session
-  getSession(sessionId) {
+  async getSession(sessionId) {
     if (!sessionId) return null;
-    
-    const session = this.sessions.get(sessionId);
-    if (session) {
+
+    try {
+      const session = await this.prisma.session.findUnique({
+        where: { sessionId },
+        include: { user: true }
+      });
+
+      if (!session) return null;
+
+      // Check if session is expired
+      if (session.expiresAt < new Date()) {
+        console.log(`⏰ Session expired: ${sessionId.substring(0, 10)}...`);
+        await this.deleteSession(sessionId);
+        return null;
+      }
+
       // Update last accessed time
-      session.lastAccessed = new Date();
-      this.sessions.set(sessionId, session);
+      await this.prisma.session.update({
+        where: { sessionId },
+        data: { lastAccessed: new Date() }
+      });
+
+      return {
+        userId: session.userId,
+        email: session.email,
+        name: session.name,
+        createdAt: session.createdAt,
+        lastAccessed: new Date()
+      };
+    } catch (error) {
+      console.error('Error getting session:', error);
+      return null;
     }
-    return session;
   }
 
   // Delete session
-  deleteSession(sessionId) {
+  async deleteSession(sessionId) {
     if (!sessionId) return false;
-    
-    const existed = this.sessions.has(sessionId);
-    this.sessions.delete(sessionId);
-    console.log(`🗑️ Deleted session ${sessionId.substring(0, 10)}...`);
-    return existed;
+
+    try {
+      await this.prisma.session.delete({
+        where: { sessionId }
+      });
+      console.log(`🗑️ Deleted session ${sessionId.substring(0, 10)}...`);
+      return true;
+    } catch (error) {
+      console.error('Error deleting session:', error);
+      return false;
+    }
   }
 
   // Check if session exists
-  hasSession(sessionId) {
-    return sessionId && this.sessions.has(sessionId);
+  async hasSession(sessionId) {
+    if (!sessionId) return false;
+
+    try {
+      const session = await this.prisma.session.findUnique({
+        where: { sessionId },
+        select: { id: true, expiresAt: true }
+      });
+
+      if (!session) return false;
+      
+      // Check if expired
+      if (session.expiresAt < new Date()) {
+        await this.deleteSession(sessionId);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error checking session:', error);
+      return false;
+    }
   }
 
   // Get session count
-  getSessionCount() {
-    return this.sessions.size;
+  async getSessionCount() {
+    try {
+      return await this.prisma.session.count({
+        where: {
+          expiresAt: { gt: new Date() } // Only count non-expired sessions
+        }
+      });
+    } catch (error) {
+      console.error('Error getting session count:', error);
+      return 0;
+    }
   }
 
-  // Clean up old sessions (optional)
-  cleanupExpiredSessions(maxAgeHours = 24) {
-    const now = new Date();
-    const expiredSessions = [];
-    
-    for (const [sessionId, session] of this.sessions.entries()) {
-      const ageHours = (now - session.lastAccessed) / (1000 * 60 * 60);
-      if (ageHours > maxAgeHours) {
-        expiredSessions.push(sessionId);
+  // Clean up expired sessions
+  async cleanupExpiredSessions() {
+    try {
+      const result = await this.prisma.session.deleteMany({
+        where: {
+          expiresAt: { lt: new Date() }
+        }
+      });
+
+      if (result.count > 0) {
+        console.log(`🧹 Cleaned up ${result.count} expired sessions from database`);
       }
+
+      return result.count;
+    } catch (error) {
+      console.error('Error cleaning up sessions:', error);
+      return 0;
     }
-    
-    expiredSessions.forEach(sessionId => {
-      this.sessions.delete(sessionId);
-    });
-    
-    if (expiredSessions.length > 0) {
-      console.log(`🧹 Cleaned up ${expiredSessions.length} expired sessions`);
-    }
-    
-    return expiredSessions.length;
+  }
+
+  // Start periodic cleanup of expired sessions
+  startCleanupInterval() {
+    setInterval(async () => {
+      await this.cleanupExpiredSessions();
+    }, 30 * 60 * 1000); // 30 minutes
+  }
+
+  // Clean shutdown
+  async shutdown() {
+    await this.prisma.$disconnect();
   }
 }
 

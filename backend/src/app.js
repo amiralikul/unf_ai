@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import cookieParser from 'cookie-parser';
 import { PrismaClient } from '@prisma/client';
 import authRoutes, { requireAuth } from './api/auth.js';
 import GoogleOAuthService from './services/GoogleOAuthService.js';
@@ -19,28 +20,33 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true
 }));
+app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({ status: 'OK', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    activeSessions: await sessionService.getSessionCount()
+  });
 });
 
 // Auth routes
 app.use('/auth', authRoutes);
 
 // Debug endpoint (remove in production)
-app.get('/debug/sessions', (req, res) => {
-  const sessionId = req.headers.authorization?.replace('Bearer ', '');
-  const session = sessionService.getSession(sessionId);
+app.get('/debug/sessions', async (req, res) => {
+  const { sessionId } = req.cookies;
+  const session = await sessionService.getSession(sessionId);
   
   res.json({
-    hasAuthHeader: !!req.headers.authorization,
+    hasSessionCookie: !!sessionId,
     sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'none',
-    sessionExists: !!session,
+    sessionExistsInStore: !!session,
     sessionData: session ? { email: session.email, userId: session.userId } : null,
-    totalSessions: sessionService.getSessionCount()
+    totalSessions: await sessionService.getSessionCount()
   });
 });
 
@@ -179,6 +185,7 @@ app.use((req, res) => {
 process.on('SIGINT', async () => {
   console.log('Shutting down gracefully...');
   await prisma.$disconnect();
+  await sessionService.shutdown();
   process.exit(0);
 });
 

@@ -30,9 +30,10 @@ model User {
   updatedAt DateTime @updatedAt
   
   // Relations
-  files   File[]
-  emails  Email[]
-  boards  TrelloBoard[]
+  files     File[]
+  emails    Email[]
+  boards    TrelloBoard[]
+  sessions  Session[]
 }
 
 model File {
@@ -98,4 +99,21 @@ model TrelloCard {
   board   TrelloBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
   
   @@index([boardId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionId    String   @unique
+  userId       String
+  email        String
+  name         String?
+  createdAt    DateTime @default(now())
+  lastAccessed DateTime @default(now())
+  expiresAt    DateTime
+  
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([sessionId])
+  @@index([userId])
+  @@index([expiresAt])
 }

@@ -1,22 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 
-// Check authentication status
-export const useAuthStatus = () => {
+// Main authentication hook
+export const useAuth = () => {
   return useQuery({
     queryKey: ['auth', 'status'],
     queryFn: api.getAuthStatus,
-    staleTime: 1 * 60 * 1000, // 1 minute
-    retry: false,
-  });
-};
-
-// Get current user
-export const useCurrentUser = () => {
-  return useQuery({
-    queryKey: ['auth', 'user'],
-    queryFn: api.getCurrentUser,
-    enabled: !!localStorage.getItem('authToken'),
+    staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false,
   });
 };
@@ -42,9 +32,6 @@ export const useLogout = () => {
   return useMutation({
     mutationFn: api.logout,
     onSuccess: () => {
-      // Clear auth token
-      localStorage.removeItem('authToken');
-      
       // Clear all cached data
       queryClient.clear();
       
@@ -53,8 +40,7 @@ export const useLogout = () => {
     },
     onError: (error) => {
       console.error('Logout failed:', error);
-      // Clear token anyway
-      localStorage.removeItem('authToken');
+      // Still reload
       window.location.reload();
     },
   });
@@ -62,35 +48,20 @@ export const useLogout = () => {
 
 // Auth utility functions
 export const authUtils = {
-  // Set auth token
-  setToken: (token) => {
-    localStorage.setItem('authToken', token);
-  },
-  
-  // Get auth token
-  getToken: () => {
-    return localStorage.getItem('authToken');
-  },
-  
-  // Check if user is authenticated
-  isAuthenticated: () => {
-    return !!localStorage.getItem('authToken');
-  },
-  
   // Handle OAuth callback
   handleOAuthCallback: () => {
     const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get('token');
     const success = urlParams.get('success');
     const error = urlParams.get('error');
     
-    if (token && success) {
-      authUtils.setToken(token);
+    if (success) {
       // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname);
-      return { success: true, token };
+      return { success: true };
     } else if (error) {
       console.error('OAuth error:', error);
+      // Clean URL
+      window.history.replaceState({}, document.title, window.location.pathname);
       return { success: false, error };
     }
     

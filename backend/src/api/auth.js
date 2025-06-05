@@ -8,16 +8,29 @@ const prisma = new PrismaClient();
 const googleOAuth = new GoogleOAuthService();
 
 // Middleware to check authentication
-export const requireAuth = (req, res, next) => {
-  const sessionId = req.headers.authorization?.replace('Bearer ', '');
+export const requireAuth = async (req, res, next) => {
+  const { sessionId } = req.cookies;
   
-  console.log(`🔐 Auth check: session=${sessionId ? sessionId.substring(0, 10) + '...' : 'none'}`);
+  if (!sessionId) {
+    console.log(`🔐 Auth check: no session cookie provided`);
+    return res.status(401).json({ 
+      error: 'Authentication required',
+      code: 'NO_TOKEN',
+      message: 'No authentication token provided'
+    });
+  }
   
-  const session = sessionService.getSession(sessionId);
+  console.log(`🔐 Auth check: session=${sessionId.substring(0, 10)}...`);
+  
+  const session = await sessionService.getSession(sessionId);
   
   if (!session) {
-    console.log(`❌ Authentication failed: invalid session`);
-    return res.status(401).json({ error: 'Authentication required' });
+    console.log(`❌ Authentication failed: invalid or expired session`);
+    return res.status(401).json({ 
+      error: 'Authentication required',
+      code: 'INVALID_SESSION',
+      message: 'Session is invalid or has expired. Please log in again.'
+    });
   }
   
   req.user = session;
@@ -77,15 +90,23 @@ router.get('/google/callback', async (req, res) => {
     }
 
     // Create session
-    const sessionId = sessionService.createSession({
+    const sessionId = await sessionService.createSession({
       userId: user.id,
       email: user.email,
       name: user.name
     });
 
-    // Redirect to frontend with session token
+    // Set session cookie
+    res.cookie('sessionId', sessionId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax', // or 'strict'
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    });
+
+    // Redirect to frontend without session token
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}?token=${sessionId}&success=true`);
+    res.redirect(`${frontendUrl}?success=true`);
 
   } catch (error) {
     console.error('OAuth callback error:', error);
@@ -94,11 +115,28 @@ router.get('/google/callback', async (req, res) => {
   }
 });
 
-// Get current user info
-router.get('/me', requireAuth, async (req, res) => {
+// Logout
+router.post('/logout', requireAuth, async (req, res) => {
+  const { sessionId } = req.cookies;
+  await sessionService.deleteSession(sessionId);
+  res.clearCookie('sessionId');
+  res.json({ message: 'Logged out successfully' });
+});
+
+// Get authentication status and user info
+router.get('/status', async (req, res) => {
+  const { sessionId } = req.cookies;
+  const session = await sessionService.getSession(sessionId);
+  
+  console.log(`📊 Auth status check: session=${sessionId ? sessionId.substring(0, 10) + '...' : 'none'}, valid=${!!session}`);
+  
+  if (!session) {
+    return res.json({ isAuthenticated: false, user: null });
+  }
+
   try {
     const user = await prisma.user.findUnique({
-      where: { id: req.user.userId },
+      where: { id: session.userId },
       select: {
         id: true,
         email: true,
@@ -109,34 +147,22 @@ router.get('/me', requireAuth, async (req, res) => {
     });
 
     if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+      // This is a defensive check in case the user was deleted but the session wasn't.
+      await sessionService.deleteSession(sessionId);
+      res.clearCookie('sessionId');
+      return res.json({ isAuthenticated: false, user: null });
     }
 
-    res.json(user);
+    res.json({ 
+      isAuthenticated: true,
+      user: user
+    });
+
   } catch (error) {
-    console.error('Error fetching user:', error);
-    res.status(500).json({ error: 'Failed to fetch user information' });
+    console.error('Error fetching user in /status endpoint:', error);
+    // If we can't fetch the user, treat them as unauthenticated.
+    return res.json({ isAuthenticated: false, user: null });
   }
-});
-
-// Logout
-router.post('/logout', requireAuth, (req, res) => {
-  const sessionId = req.headers.authorization?.replace('Bearer ', '');
-  sessionService.deleteSession(sessionId);
-  res.json({ message: 'Logged out successfully' });
-});
-
-// Get authentication status
-router.get('/status', (req, res) => {
-  const sessionId = req.headers.authorization?.replace('Bearer ', '');
-  const session = sessionService.getSession(sessionId);
-  
-  console.log(`📊 Auth status check: session=${sessionId ? sessionId.substring(0, 10) + '...' : 'none'}, valid=${!!session}`);
-  
-  res.json({ 
-    isAuthenticated: !!session,
-    user: session || null 
-  });
 });
 
 export default router; 

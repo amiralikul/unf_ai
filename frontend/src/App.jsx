@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from './lib/api'
-import { useAuthStatus, useCurrentUser, useGoogleAuthUrl, useLogout, authUtils } from './hooks/useAuth'
+import { useAuth, useGoogleAuthUrl, useLogout, authUtils } from './hooks/useAuth'
 import { useDriveFiles } from './hooks/useDriveFiles'
 import { useGmailMessages } from './hooks/useGmailMessages'
 import { useTrelloBoards } from './hooks/useTrelloBoards'
@@ -19,7 +19,7 @@ function App() {
   useEffect(() => {
     const result = authUtils.handleOAuthCallback();
     if (result.success) {
-      console.log('✅ OAuth success! Token stored:', result.token);
+      console.log('✅ OAuth success!');
       window.location.reload(); // Refresh to update auth state
     } else if (result.error) {
       console.error('❌ OAuth failed:', result.error);
@@ -34,19 +34,17 @@ function App() {
   })
 
   // Auth hooks
-  const { data: authStatus, isLoading: authLoading } = useAuthStatus();
-  const { data: currentUser } = useCurrentUser();
+  const { data: authData, isLoading: authLoading } = useAuth();
   const googleAuthMutation = useGoogleAuthUrl();
   const logoutMutation = useLogout();
 
-  const isAuthenticated = authUtils.isAuthenticated();
-  const currentToken = authUtils.getToken();
+  const isAuthenticated = authData?.isAuthenticated || false;
+  const currentUser = authData?.user;
 
   // Debug info
   console.log('🔐 Auth Debug:', {
     isAuthenticated,
-    currentToken: currentToken ? `${currentToken.substring(0, 10)}...` : 'none',
-    authStatus,
+    authLoading,
     currentUser
   });
 
