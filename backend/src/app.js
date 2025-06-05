@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
 import authRoutes, { requireAuth } from './api/auth.js';
 import GoogleOAuthService from './services/GoogleOAuthService.js';
+import sessionService from './services/SessionService.js';
 
 // Load environment variables
 dotenv.config();
@@ -29,6 +30,20 @@ app.get('/health', (req, res) => {
 // Auth routes
 app.use('/auth', authRoutes);
 
+// Debug endpoint (remove in production)
+app.get('/debug/sessions', (req, res) => {
+  const sessionId = req.headers.authorization?.replace('Bearer ', '');
+  const session = sessionService.getSession(sessionId);
+  
+  res.json({
+    hasAuthHeader: !!req.headers.authorization,
+    sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'none',
+    sessionExists: !!session,
+    sessionData: session ? { email: session.email, userId: session.userId } : null,
+    totalSessions: sessionService.getSessionCount()
+  });
+});
+
 // Protected API Routes
 app.get('/api/drive/files', requireAuth, async (req, res) => {
   try {
@@ -46,7 +61,41 @@ app.get('/api/drive/files', requireAuth, async (req, res) => {
     };
 
     const files = await googleOAuth.getDriveFiles(tokens);
-    res.json({ files });
+    
+    // Save files to database
+    const savedFiles = [];
+    for (const file of files) {
+      try {
+        const savedFile = await prisma.file.upsert({
+          where: { googleId: file.id },
+          update: {
+            name: file.name,
+            mimeType: file.mimeType,
+            size: file.size ? parseInt(file.size) : null,
+            webViewLink: file.webViewLink,
+            owners: JSON.stringify(file.owners),
+            modifiedAt: new Date(file.modifiedTime),
+          },
+          create: {
+            googleId: file.id,
+            name: file.name,
+            mimeType: file.mimeType,
+            size: file.size ? parseInt(file.size) : null,
+            webViewLink: file.webViewLink,
+            owners: JSON.stringify(file.owners),
+            modifiedAt: new Date(file.modifiedTime),
+            userId: req.user.userId,
+          },
+        });
+        savedFiles.push(savedFile);
+      } catch (dbError) {
+        console.error('Error saving file:', file.id, dbError);
+        // Continue with other files even if one fails
+      }
+    }
+
+    console.log(`✅ Saved ${savedFiles.length} Drive files to database`);
+    res.json({ files: savedFiles });
   } catch (error) {
     console.error('Drive files error:', error);
     res.status(500).json({ error: 'Failed to fetch drive files' });
@@ -69,7 +118,38 @@ app.get('/api/gmail/messages', requireAuth, async (req, res) => {
     };
 
     const messages = await googleOAuth.getGmailMessages(tokens);
-    res.json({ messages });
+    
+    // Save messages to database
+    const savedMessages = [];
+    for (const message of messages) {
+      try {
+        const savedMessage = await prisma.email.upsert({
+          where: { googleId: message.id },
+          update: {
+            subject: message.subject,
+            sender: message.sender,
+            recipient: message.recipient,
+            receivedAt: message.receivedAt,
+          },
+          create: {
+            googleId: message.id,
+            threadId: message.threadId,
+            subject: message.subject,
+            sender: message.sender,
+            recipient: message.recipient,
+            receivedAt: message.receivedAt,
+            userId: req.user.userId,
+          },
+        });
+        savedMessages.push(savedMessage);
+      } catch (dbError) {
+        console.error('Error saving message:', message.id, dbError);
+        // Continue with other messages even if one fails
+      }
+    }
+
+    console.log(`✅ Saved ${savedMessages.length} Gmail messages to database`);
+    res.json({ messages: savedMessages });
   } catch (error) {
     console.error('Gmail messages error:', error);
     res.status(500).json({ error: 'Failed to fetch gmail messages' });

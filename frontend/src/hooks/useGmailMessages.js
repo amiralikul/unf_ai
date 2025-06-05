@@ -7,5 +7,6 @@ export const useGmailMessages = () => {
     queryKey: queryKeys.gmailMessages,
     queryFn: api.getGmailMessages,
     staleTime: 1 * 60 * 1000, // 1 minute for email data
+    enabled: !!localStorage.getItem('authToken'), // Only fetch when authenticated
   });
 }; 

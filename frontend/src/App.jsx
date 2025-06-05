@@ -13,17 +13,16 @@ function App() {
   const { data: gmailMessages } = useGmailMessages();
   const { data: trelloBoards } = useTrelloBoards();
 
-  console.log(driveFiles, gmailMessages, trelloBoards);
-
+  console.log('📊 Data:', { driveFiles, gmailMessages, trelloBoards });
 
   // Handle OAuth callback on page load
   useEffect(() => {
     const result = authUtils.handleOAuthCallback();
     if (result.success) {
-      console.log('OAuth success!');
+      console.log('✅ OAuth success! Token stored:', result.token);
       window.location.reload(); // Refresh to update auth state
     } else if (result.error) {
-      console.error('OAuth failed:', result.error);
+      console.error('❌ OAuth failed:', result.error);
     }
   }, []);
   
@@ -41,6 +40,15 @@ function App() {
   const logoutMutation = useLogout();
 
   const isAuthenticated = authUtils.isAuthenticated();
+  const currentToken = authUtils.getToken();
+
+  // Debug info
+  console.log('🔐 Auth Debug:', {
+    isAuthenticated,
+    currentToken: currentToken ? `${currentToken.substring(0, 10)}...` : 'none',
+    authStatus,
+    currentUser
+  });
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-900 to-purple-900 text-white">

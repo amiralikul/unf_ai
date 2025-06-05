@@ -7,6 +7,7 @@ export const useDriveFiles = () => {
     queryKey: queryKeys.driveFiles,
     queryFn: api.getDriveFiles,
     staleTime: 2 * 60 * 1000, // 2 minutes for file data
+    enabled: !!localStorage.getItem('authToken'), // Only fetch when authenticated
   });
 };
 

@@ -1,28 +1,27 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import GoogleOAuthService from '../services/GoogleOAuthService.js';
+import sessionService from '../services/SessionService.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 const googleOAuth = new GoogleOAuthService();
 
-// Session middleware (simple in-memory session for development)
-const sessions = new Map();
-
-// Generate session ID
-const generateSessionId = () => {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36);
-};
-
 // Middleware to check authentication
 export const requireAuth = (req, res, next) => {
   const sessionId = req.headers.authorization?.replace('Bearer ', '');
   
-  if (!sessionId || !sessions.has(sessionId)) {
+  console.log(`🔐 Auth check: session=${sessionId ? sessionId.substring(0, 10) + '...' : 'none'}`);
+  
+  const session = sessionService.getSession(sessionId);
+  
+  if (!session) {
+    console.log(`❌ Authentication failed: invalid session`);
     return res.status(401).json({ error: 'Authentication required' });
   }
   
-  req.user = sessions.get(sessionId);
+  req.user = session;
+  console.log(`✅ Authenticated user: ${session.email}`);
   next();
 };
 
@@ -78,8 +77,7 @@ router.get('/google/callback', async (req, res) => {
     }
 
     // Create session
-    const sessionId = generateSessionId();
-    sessions.set(sessionId, {
+    const sessionId = sessionService.createSession({
       userId: user.id,
       email: user.email,
       name: user.name
@@ -124,18 +122,20 @@ router.get('/me', requireAuth, async (req, res) => {
 // Logout
 router.post('/logout', requireAuth, (req, res) => {
   const sessionId = req.headers.authorization?.replace('Bearer ', '');
-  sessions.delete(sessionId);
+  sessionService.deleteSession(sessionId);
   res.json({ message: 'Logged out successfully' });
 });
 
 // Get authentication status
 router.get('/status', (req, res) => {
   const sessionId = req.headers.authorization?.replace('Bearer ', '');
-  const isAuthenticated = sessionId && sessions.has(sessionId);
+  const session = sessionService.getSession(sessionId);
+  
+  console.log(`📊 Auth status check: session=${sessionId ? sessionId.substring(0, 10) + '...' : 'none'}, valid=${!!session}`);
   
   res.json({ 
-    isAuthenticated,
-    user: isAuthenticated ? sessions.get(sessionId) : null 
+    isAuthenticated: !!session,
+    user: session || null 
   });
 });
 
