@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"pnpm --filter=./backend dev\" \"pnpm --filter=./frontend dev\"",
     "build": "pnpm --filter=./backend build && pnpm --filter=./frontend build",
-    "test": "pnpm --parallel --filter=./backend --filter=./frontend test"
+    "test": "concurrently \"pnpm --filter=./backend test\" \"pnpm --filter=./frontend test\""
   },
   "keywords": [
     "ai",

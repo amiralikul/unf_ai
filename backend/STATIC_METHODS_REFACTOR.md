@@ -1,236 +1,228 @@
-# Static Methods Refactor - Eliminating .bind() Approach
+# Refactoring Static Methods to Functional Controllers
 
-## 🎯 **Problem Solved**
+This guide provides step-by-step instructions for refactoring the remaining static method controllers to the functional approach with dependency injection.
 
-**Before:** Routes used verbose `.bind()` approach
-```javascript
-// ❌ Verbose and ugly
-asyncHandler(DriveController.getFiles.bind(DriveController))
+## Completed Refactoring
+
+So far, we've refactored:
+
+1. **AI Controllers**
+   - `processQuery`
+   - `getQueryHistory`
+   - `getUsageStats`
+
+2. **Trello Controllers**
+   - `getBoards`
+   - `getBoardCards`
+   - `syncBoards`
+
+## Refactoring Steps for Remaining Controllers
+
+### 1. Drive Controllers
+
+#### Create Directory Structure
+
+```bash
+mkdir -p backend/src/controllers/drive
+mkdir -p backend/src/controllers/drive/__tests__
 ```
 
-**After:** Clean static method approach
-```javascript
-// ✅ Clean and simple
-asyncHandler(DriveController.getFiles)
-```
+#### Implement Controller Functions
 
-## 🔧 **Changes Made**
+Create the following files:
 
-### **1. Controller Method Conversion**
+1. `controllers/drive/getFiles.js`
+   ```javascript
+   import { sendSuccess } from '../../utils/responses.js';
+   import { getPaginationParams, getPaginationMeta } from '../../utils/pagination.js';
+   
+   export const getFilesController = (googleOAuth, prisma) => async (req, res) => {
+     // Implementation...
+   };
+   
+   export default getFilesController;
+   ```
 
-#### **DriveController.js**
-```javascript
-// Before
-class DriveController {
-  async getFiles(req, res) { ... }
-  async getFileById(req, res) { ... }
-  async deleteFile(req, res) { ... }
-  async syncFiles(req, res) { ... }
-}
-export default new DriveController();
+2. `controllers/drive/getFileById.js`
+3. `controllers/drive/syncFiles.js`
+4. `controllers/drive/index.js`
+   ```javascript
+   import getFilesController from './getFiles.js';
+   import getFileByIdController from './getFileById.js';
+   import syncFilesController from './syncFiles.js';
+   
+   export const createDriveControllers = ({ googleOAuth, prisma }) => ({
+     getFiles: getFilesController(googleOAuth, prisma),
+     getFileById: getFileByIdController(googleOAuth, prisma),
+     syncFiles: syncFilesController(googleOAuth, prisma)
+   });
+   
+   export {
+     getFilesController,
+     getFileByIdController,
+     syncFilesController
+   };
+   ```
 
-// After
-class DriveController {
-  static async getFiles(req, res) { ... }
-  static async getFileById(req, res) { ... }
-  static async deleteFile(req, res) { ... }
-  static async syncFiles(req, res) { ... }
-}
-export default DriveController;
-```
+#### Update Main Controllers Index
 
-#### **GmailController.js**
-```javascript
-// Converted 5 methods to static:
-static async getMessages(req, res) { ... }
-static async getMessageById(req, res) { ... }
-static async deleteMessage(req, res) { ... }
-static async syncMessages(req, res) { ... }
-static async getThreads(req, res) { ... }
-```
-
-#### **TrelloController.js**
-```javascript
-// Converted 4 methods to static:
-static async getBoards(req, res) { ... }
-static async getBoardCards(req, res) { ... }
-static async getBoardById(req, res) { ... }
-static async syncBoards(req, res) { ... }
-```
-
-#### **AIController.js**
-```javascript
-// Converted 6 methods to static + static property:
-static openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-
-static async processQuery(req, res) { ... }
-static async gatherContextData(userId, options) { ... }
-static buildPrompt(query, contextData) { ... }
-static async logQuery(userId, query, response, contextSummary) { ... }
-static async getQueryHistory(req, res) { ... }
-static async getUsageStats(req, res) { ... }
-```
-
-### **2. Route File Updates**
-
-#### **drive.js**
-```javascript
-// Before
-router.get('/files', 
-  validateQuery(driveFilesQuerySchema),
-  asyncHandler(DriveController.getFiles.bind(DriveController))
-);
-
-// After
-router.get('/files', 
-  validateQuery(driveFilesQuerySchema),
-  asyncHandler(DriveController.getFiles)
-);
-```
-
-#### **gmail.js, trello.js, ai.js**
-All route files updated with the same clean pattern - removed all `.bind()` calls.
-
-### **3. Export Changes**
+Update `controllers/index.js` to include Drive controllers:
 
 ```javascript
-// Before
-export default new DriveController();
-export default new GmailController();
-export default new TrelloController();
-export default new AIController();
+import { createDriveControllers } from './drive/index.js';
 
-// After
-export default DriveController;
-export default GmailController;
-export default TrelloController;
-export default AIController;
-```
-
-## 🚀 **Benefits Achieved**
-
-### **1. Cleaner Code**
-- **Eliminated 20+ `.bind()` calls** across all route files
-- **Reduced verbosity** by ~40% in route definitions
-- **Improved readability** with simpler syntax
-
-### **2. Better Performance**
-- **No runtime binding** - methods are bound at class definition time
-- **Reduced memory overhead** - no instance creation needed
-- **Faster execution** - direct static method calls
-
-### **3. Maintainability**
-- **Consistent pattern** across all controllers
-- **Easier to understand** for new developers
-- **Less prone to `this` context errors**
-
-### **4. Modern JavaScript**
-- **ES6+ static methods** - modern and standard approach
-- **Class-based organization** maintained
-- **TypeScript ready** - static methods work great with TS
-
-## 📊 **Code Comparison**
-
-### **Route Definition**
-```javascript
-// Before (verbose)
-router.get('/files', 
-  validateQuery(driveFilesQuerySchema),
-  asyncHandler(DriveController.getFiles.bind(DriveController))
-);
-
-// After (clean)
-router.get('/files', 
-  validateQuery(driveFilesQuerySchema),
-  asyncHandler(DriveController.getFiles)
-);
-```
-
-### **Controller Method**
-```javascript
-// Before (instance method)
-class DriveController {
-  async getFiles(req, res) {
-    // Implementation
-  }
-}
-
-// After (static method)
-class DriveController {
-  static async getFiles(req, res) {
-    // Same implementation
-  }
-}
-```
-
-### **Export Pattern**
-```javascript
-// Before (instance export)
-export default new DriveController();
-
-// After (class export)
-export default DriveController;
-```
-
-## 🔍 **Alternative Approaches Considered**
-
-### **1. Arrow Functions**
-```javascript
-// Option: Arrow function wrapper
-asyncHandler((req, res) => DriveController.getFiles(req, res))
-```
-**Verdict:** More verbose than static methods
-
-### **2. Functional Approach**
-```javascript
-// Option: Export individual functions
-export const getFiles = async (req, res) => { ... };
-```
-**Verdict:** Good but loses class organization
-
-### **3. Object with Methods**
-```javascript
-// Option: Plain object
-const DriveController = {
-  async getFiles(req, res) { ... }
+export const controllers = {
+  ai: createAIControllers({ openai, prisma }),
+  trello: createTrelloControllers({ trelloService, prisma }),
+  drive: createDriveControllers({ googleOAuth, prisma }),
+  // ...
 };
 ```
-**Verdict:** Works but less structured than classes
 
-## ✅ **Testing Results**
+#### Update API Routes
 
-**Server Startup:** ✅ Successful  
-**Health Endpoint:** ✅ Working  
-**Authentication:** ✅ Functioning  
-**Route Handling:** ✅ All endpoints accessible  
-**Error Handling:** ✅ Proper error responses  
+Update `api/drive.js` to use the new controllers:
 
-## 📝 **Migration Summary**
+```javascript
+import controllers from '../controllers/index.js';
 
-### **Files Modified:**
-- `src/controllers/DriveController.js` - 4 methods converted
-- `src/controllers/GmailController.js` - 5 methods converted  
-- `src/controllers/TrelloController.js` - 4 methods converted
-- `src/controllers/AIController.js` - 6 methods + 1 property converted
-- `src/api/drive.js` - 4 route handlers updated
-- `src/api/gmail.js` - 5 route handlers updated
-- `src/api/trello.js` - 4 route handlers updated
-- `src/api/ai.js` - 3 route handlers updated
+router.get('/files',
+  validateQuery(driveFilesQuerySchema),
+  paginationMiddleware,
+  asyncHandler(controllers.drive.getFiles)
+);
+```
 
-### **Total Changes:**
-- **19 methods** converted to static
-- **20+ .bind() calls** eliminated
-- **8 route files** cleaned up
-- **4 export statements** simplified
+### 2. Gmail Controllers
 
-## 🎉 **Result**
+#### Create Directory Structure
 
-The codebase now uses a **clean, modern approach** with static methods that:
+```bash
+mkdir -p backend/src/controllers/gmail
+mkdir -p backend/src/controllers/gmail/__tests__
+```
 
-✅ **Eliminates verbose `.bind()` syntax**  
-✅ **Maintains class-based organization**  
-✅ **Improves code readability**  
-✅ **Reduces runtime overhead**  
-✅ **Follows modern JavaScript patterns**  
+#### Implement Controller Functions
 
-**All functionality preserved** with significantly cleaner code!
+Create the following files:
+
+1. `controllers/gmail/getMessages.js`
+2. `controllers/gmail/getMessageById.js`
+3. `controllers/gmail/syncMessages.js`
+4. `controllers/gmail/index.js`
+
+#### Update Main Controllers Index
+
+Update `controllers/index.js` to include Gmail controllers.
+
+#### Update API Routes
+
+Update `api/gmail.js` to use the new controllers.
+
+### 3. Write Tests
+
+For each controller, create test files in the `__tests__` directory:
+
+```javascript
+// controllers/drive/__tests__/getFiles.test.js
+import { getFilesController } from '../getFiles.js';
+
+describe('getFiles controller', () => {
+  // Mock dependencies
+  const mockGoogleOAuth = {
+    getDriveClient: jest.fn()
+  };
+  
+  const mockPrisma = {
+    file: {
+      findMany: jest.fn(),
+      count: jest.fn()
+    }
+  };
+  
+  // Tests...
+});
+```
+
+## Benefits of the Functional Approach
+
+1. **Improved Testability**: Dependencies are explicitly injected, making them easy to mock
+2. **Better Separation of Concerns**: Each controller function focuses on a single responsibility
+3. **Reduced Side Effects**: Pure functions with explicit inputs and outputs
+4. **More Modular**: Easier to compose and reuse functions
+5. **Alignment with Modern JS**: Takes advantage of JavaScript's functional capabilities
+
+## Tips for Refactoring
+
+1. **Start with the simplest controllers** first to get comfortable with the pattern
+2. **Extract common functionality** into utility functions
+3. **Use the existing implementation** as a reference, but improve error handling and structure
+4. **Add comprehensive tests** for each controller
+5. **Update one API route file at a time** to minimize disruption
+
+## Example: Refactoring a Static Method
+
+### Before (Static Method)
+
+```javascript
+class DriveController {
+  static async getFiles(req, res) {
+    const { page = 1, limit = 10 } = req.query;
+    const userId = req.user.userId;
+    
+    try {
+      const files = await prisma.file.findMany({
+        where: { userId },
+        skip: (page - 1) * limit,
+        take: parseInt(limit)
+      });
+      
+      res.json({ files });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+}
+```
+
+### After (Functional Controller)
+
+```javascript
+// controllers/drive/getFiles.js
+import { sendSuccess } from '../../utils/responses.js';
+import { getPaginationParams, getPaginationMeta } from '../../utils/pagination.js';
+import { DatabaseError } from '../../utils/errors.js';
+
+export const getFilesController = (googleOAuth, prisma) => async (req, res) => {
+  const { page = 1, limit = 10 } = req.query;
+  const userId = req.user.userId;
+  const pagination = getPaginationParams({ page, limit });
+  
+  try {
+    const [files, total] = await Promise.all([
+      prisma.file.findMany({
+        where: { userId },
+        skip: pagination.skip,
+        take: pagination.limit,
+        orderBy: { name: 'asc' }
+      }),
+      prisma.file.count({ where: { userId } })
+    ]);
+    
+    const paginationMeta = getPaginationMeta(total, pagination.page, pagination.limit);
+    
+    sendSuccess(res, { files }, paginationMeta);
+  } catch (error) {
+    if (error.code && error.code.startsWith('P')) {
+      throw new DatabaseError('Failed to retrieve files', 'getFiles', error);
+    }
+    throw error;
+  }
+};
+
+export default getFilesController;
+```
+
+## Conclusion
+
+By following this guide, you can systematically refactor all remaining controllers to the functional approach. This will result in a more maintainable, testable, and modular codebase that follows modern JavaScript best practices.

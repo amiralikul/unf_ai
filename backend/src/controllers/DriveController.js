@@ -12,7 +12,7 @@ const googleOAuth = new GoogleOAuthService();
 
 class DriveController {
   // Get Drive files with pagination and filtering
-  async getFiles(req, res) {
+  static async getFiles(req, res) {
     const { page, limit, mimeType, modifiedAfter, modifiedBefore } = req.query;
     const userId = req.user.userId;
 
@@ -120,7 +120,7 @@ class DriveController {
   }
 
   // Get a specific file by ID
-  async getFileById(req, res) {
+  static async getFileById(req, res) {
     const { id } = req.params;
     const userId = req.user.userId;
 
@@ -150,7 +150,7 @@ class DriveController {
   }
 
   // Delete a file (from database only, not from Google Drive)
-  async deleteFile(req, res) {
+  static async deleteFile(req, res) {
     const { id } = req.params;
     const userId = req.user.userId;
 
@@ -184,7 +184,7 @@ class DriveController {
   }
 
   // Sync files from Google Drive
-  async syncFiles(req, res) {
+  static async syncFiles(req, res) {
     const userId = req.user.userId;
 
     try {
@@ -276,4 +276,4 @@ class DriveController {
   }
 }
 
-export default new DriveController();
+export default DriveController;

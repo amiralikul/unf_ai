@@ -1,13 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../lib/api';
+import { useAuth } from './useAuth';
 
-export const useTrelloCards = (boardId) => {
+export const useTrelloCards = (boardId, params = {}) => {
+  const { data: authData } = useAuth();
+  const isAuthenticated = authData?.isAuthenticated || false;
+
   return useQuery({
-    queryKey: ['trelloCards', boardId],
-    queryFn: async () => {
-      const data = await api.getTrelloCards(boardId);
-      return data.cards;
-    },
-    enabled: !!boardId,
+    queryKey: ['trelloCards', boardId, params],
+    queryFn: () => api.getTrelloCards(boardId, params),
+    staleTime: 2 * 60 * 1000, // 2 minutes for card data
+    enabled: isAuthenticated && !!boardId,
   });
 };

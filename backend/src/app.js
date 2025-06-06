@@ -3,10 +3,24 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 import { PrismaClient } from '@prisma/client';
-import authRoutes, { requireAuth } from './api/auth.js';
-import GoogleOAuthService from './services/GoogleOAuthService.js';
+
+// Import routes
+import authRoutes from './api/auth.js';
+import driveRoutes from './api/drive.js';
+import gmailRoutes from './api/gmail.js';
+import trelloRoutes from './api/trello.js';
+import aiRoutes from './api/ai.js';
+
+// Import middleware
+import {
+  errorHandler,
+  notFoundHandler,
+  requestIdMiddleware,
+  requestLogger
+} from './middleware/errorHandler.js';
+
+// Import services
 import sessionService from './services/SessionService.js';
-import trelloService from './services/TrelloService.js';
 
 // Load environment variables
 dotenv.config();
@@ -14,292 +28,124 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 3001;
 const prisma = new PrismaClient();
-const googleOAuth = new GoogleOAuthService();
 
 // Middleware
+app.use(requestIdMiddleware);
+app.use(requestLogger);
 app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173',
   credentials: true
 }));
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check endpoint
 app.get('/health', async (req, res) => {
-  res.json({ 
-    status: 'OK', 
-    timestamp: new Date().toISOString(),
-    activeSessions: await sessionService.getSessionCount()
-  });
+  try {
+    const activeSessions = await sessionService.getSessionCount();
+    const dbStatus = await prisma.$queryRaw`SELECT 1 as test`;
+
+    res.json({
+      success: true,
+      status: 'OK',
+      timestamp: new Date().toISOString(),
+      services: {
+        database: dbStatus ? 'connected' : 'disconnected',
+        sessions: 'active'
+      },
+      activeSessions
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed'
+    });
+  }
 });
 
-// Auth routes
+// API Routes
 app.use('/auth', authRoutes);
+app.use('/api/drive', driveRoutes);
+app.use('/api/gmail', gmailRoutes);
+app.use('/api/trello', trelloRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Debug endpoint (remove in production)
-app.get('/debug/sessions', async (req, res) => {
-  const { sessionId } = req.cookies;
-  const session = await sessionService.getSession(sessionId);
-  
-  res.json({
-    hasSessionCookie: !!sessionId,
-    sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'none',
-    sessionExistsInStore: !!session,
-    sessionData: session ? { email: session.email, userId: session.userId } : null,
-    totalSessions: await sessionService.getSessionCount()
+if (process.env.NODE_ENV !== 'production') {
+  app.get('/debug/sessions', async (req, res) => {
+    try {
+      const { sessionId } = req.cookies;
+      const session = await sessionService.getSession(sessionId);
+
+      res.json({
+        success: true,
+        data: {
+          hasSessionCookie: !!sessionId,
+          sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'none',
+          sessionExistsInStore: !!session,
+          sessionData: session ? { email: session.email, userId: session.userId } : null,
+          totalSessions: await sessionService.getSessionCount()
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to get debug info'
+      });
+    }
   });
-});
-
-// Protected API Routes
-app.get('/api/drive/files', requireAuth, async (req, res) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.userId }
-    });
-
-    if (!user?.googleAccessToken) {
-      return res.status(401).json({ error: 'Google authentication required' });
-    }
-
-    const tokens = {
-      access_token: user.googleAccessToken,
-      refresh_token: user.googleRefreshToken,
-    };
-
-    const files = await googleOAuth.getDriveFiles(tokens);
-    
-    // Save files to database
-    const savedFiles = [];
-    for (const file of files) {
-      try {
-        const savedFile = await prisma.file.upsert({
-          where: { googleId: file.id },
-          update: {
-            name: file.name,
-            mimeType: file.mimeType,
-            size: file.size ? parseInt(file.size) : null,
-            webViewLink: file.webViewLink,
-            owners: JSON.stringify(file.owners),
-            modifiedAt: new Date(file.modifiedTime),
-          },
-          create: {
-            googleId: file.id,
-            name: file.name,
-            mimeType: file.mimeType,
-            size: file.size ? parseInt(file.size) : null,
-            webViewLink: file.webViewLink,
-            owners: JSON.stringify(file.owners),
-            modifiedAt: new Date(file.modifiedTime),
-            userId: req.user.userId,
-          },
-        });
-        savedFiles.push(savedFile);
-      } catch (dbError) {
-        console.error('Error saving file:', file.id, dbError);
-        // Continue with other files even if one fails
-      }
-    }
-
-    console.log(`✅ Saved ${savedFiles.length} Drive files to database`);
-    res.json({ files: savedFiles });
-  } catch (error) {
-    console.error('Drive files error:', error);
-    res.status(500).json({ error: 'Failed to fetch drive files' });
-  }
-});
-
-app.get('/api/gmail/messages', requireAuth, async (req, res) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.userId }
-    });
-
-    if (!user?.googleAccessToken) {
-      return res.status(401).json({ error: 'Google authentication required' });
-    }
-
-    const tokens = {
-      access_token: user.googleAccessToken,
-      refresh_token: user.googleRefreshToken,
-    };
-
-    const messages = await googleOAuth.getGmailMessages(tokens);
-    
-    // Save messages to database
-    const savedMessages = [];
-    for (const message of messages) {
-      try {
-        const savedMessage = await prisma.email.upsert({
-          where: { googleId: message.id },
-          update: {
-            subject: message.subject,
-            sender: message.sender,
-            recipient: message.recipient,
-            receivedAt: message.receivedAt,
-          },
-          create: {
-            googleId: message.id,
-            threadId: message.threadId,
-            subject: message.subject,
-            sender: message.sender,
-            recipient: message.recipient,
-            receivedAt: message.receivedAt,
-            userId: req.user.userId,
-          },
-        });
-        savedMessages.push(savedMessage);
-      } catch (dbError) {
-        console.error('Error saving message:', message.id, dbError);
-        // Continue with other messages even if one fails
-      }
-    }
-
-    console.log(`✅ Saved ${savedMessages.length} Gmail messages to database`);
-    res.json({ messages: savedMessages });
-  } catch (error) {
-    console.error('Gmail messages error:', error);
-    res.status(500).json({ error: 'Failed to fetch gmail messages' });
-  }
-});
-
-app.get('/api/trello/boards', requireAuth, async (req, res) => {
-  try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.userId }
-    });
-
-    // if (!user?.trelloApiKey || !user?.trelloToken) {
-    //   return res.status(401).json({ error: 'Trello API key and token required' });
-    // }
-
-
-    const trelloApiKey = process.env.TRELLO_API_KEY;
-    const trelloToken = process.env.TRELLO_TOKEN;
-
-    console.log('trelloApiKey', trelloApiKey);
-    console.log('trelloToken', trelloToken);
+}
 
 
 
-    // const boards = await trelloService.getBoards(user.trelloApiKey, user.trelloToken);
-    const boards = await trelloService.getBoards(trelloApiKey, trelloToken);
-    
-    const savedBoards = [];
-    for (const board of boards) {
-      try {
-        const savedBoard = await prisma.trelloBoard.upsert({
-          where: { trelloId: board.id },
-          update: {
-            name: board.name,
-            url: board.url,
-          },
-          create: {
-            trelloId: board.id,
-            name: board.name,
-            url: board.url,
-            userId: req.user.userId,
-          },
-        });
-        savedBoards.push(savedBoard);
-      } catch (dbError) {
-        console.error('Error saving board:', board.id, dbError);
-      }
-    }
 
-    console.log(`✅ Saved ${savedBoards.length} Trello boards to database`);
-    res.json({ boards: savedBoards.map(b => ({...b, id: b.trelloId})) });
-  } catch (error) {
-    console.error('Trello boards error:', error);
-    res.status(500).json({ error: 'Failed to fetch Trello boards' });
-  }
-});
 
-app.get('/api/trello/boards/:boardId/cards', requireAuth, async (req, res, next) => {
-  const { boardId } = req.params;
-  console.log(`[TRELLO] ==> Request received for cards on board: ${boardId}`);
-  try {
-    const trelloApiKey = process.env.TRELLO_API_KEY;
-    const trelloToken = process.env.TRELLO_TOKEN;
-    console.log(`[TRELLO] Using API Key: ${trelloApiKey.substring(0, 5)}...`);
 
-    const board = await prisma.trelloBoard.findUnique({
-      where: { trelloId: boardId },
-    });
-    console.log('[TRELLO] Database board lookup result:', board);
 
-    if (!board) {
-      console.log('[TRELLO] <== Board not found in local database. Responding with 404.');
-      return res.status(404).json({ error: 'Trello board not found in database' });
-    }
-
-    const cards = await trelloService.getCardsForBoard(trelloApiKey, trelloToken, boardId);
-    console.log(`[TRELLO] Fetched ${cards.length} cards from Trello API.`);
-
-    const savedCards = [];
-    for (const card of cards) {
-      try {
-        const savedCard = await prisma.trelloCard.upsert({
-          where: { trelloId: card.id },
-          update: {
-            name: card.name,
-            description: card.desc,
-            url: card.url,
-            dueDate: card.due ? new Date(card.due) : null,
-          },
-          create: {
-            trelloId: card.id,
-            name: card.name,
-            description: card.desc,
-            url: card.url,
-            dueDate: card.due ? new Date(card.due) : null,
-            board: {
-              connect: { id: board.id },
-            },
-            user: {
-              connect: { id: req.user.userId },
-            },
-          },
-        });
-        savedCards.push(savedCard);
-      } catch (dbError) {
-        console.error('[TRELLO] Error saving card to DB:', card.id, dbError);
-      }
-    }
-
-    console.log(`[TRELLO] <== Successfully saved ${savedCards.length} cards. Responding with cards.`);
-    res.json({ cards: savedCards });
-  } catch (error) {
-    console.error('[TRELLO] <== Error in card fetching process:', error);
-    next(error);
-  }
-});
-
-app.post('/api/ai/query', requireAuth, async (req, res) => {
-  res.json({ message: 'AI query endpoint - coming soon' });
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
-});
-
-// 404 handler
-app.use((req, res) => {
-  res.status(404).json({ error: 'Route not found' });
-});
+// Error handling middleware (must be last)
+app.use(notFoundHandler);
+app.use(errorHandler);
 
 // Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('Shutting down gracefully...');
-  await prisma.$disconnect();
-  await sessionService.shutdown();
-  process.exit(0);
+const gracefulShutdown = async (signal) => {
+  console.log(`\n📴 Received ${signal}. Starting graceful shutdown...`);
+
+  try {
+    console.log('🔌 Disconnecting from database...');
+    await prisma.$disconnect();
+
+    console.log('🔐 Shutting down session service...');
+    await sessionService.shutdown();
+
+    console.log('✅ Graceful shutdown completed');
+    process.exit(0);
+  } catch (error) {
+    console.error('❌ Error during shutdown:', error);
+    process.exit(1);
+  }
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught Exception:', error);
+  gracefulShutdown('uncaughtException');
 });
 
-app.listen(port, () => {
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled Rejection at:', promise, 'reason:', reason);
+  gracefulShutdown('unhandledRejection');
+});
+
+const server = app.listen(port, () => {
   console.log(`🚀 Backend server running on http://localhost:${port}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`🔍 Debug mode: ${process.env.NODE_ENV !== 'production' ? 'enabled' : 'disabled'}`);
 });
 
-export default app; 
+export default app;

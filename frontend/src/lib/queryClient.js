@@ -20,4 +20,6 @@ export const queryKeys = {
   driveFiles: ['drive', 'files'],
   gmailMessages: ['gmail', 'messages'],
   trelloBoards: ['trello', 'boards'],
-}; 
+  trelloCards: ['trello', 'cards'],
+  ai: ['ai'],
+};

@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 
 class TrelloController {
   // Get Trello boards with pagination and filtering
-  async getBoards(req, res) {
+  static async getBoards(req, res) {
     const { page, limit, filter } = req.query;
     const userId = req.user.userId;
 
@@ -113,7 +113,7 @@ class TrelloController {
   }
 
   // Get cards for a specific board
-  async getBoardCards(req, res) {
+  static async getBoardCards(req, res) {
     const { boardId } = req.params;
     const { page, limit, filter } = req.query;
     const userId = req.user.userId;
@@ -222,7 +222,7 @@ class TrelloController {
   }
 
   // Get a specific board by ID
-  async getBoardById(req, res) {
+  static async getBoardById(req, res) {
     const { boardId } = req.params;
     const userId = req.user.userId;
 
@@ -263,7 +263,7 @@ class TrelloController {
   }
 
   // Sync all boards and their cards
-  async syncBoards(req, res) {
+  static async syncBoards(req, res) {
     const userId = req.user.userId;
 
     try {
@@ -397,4 +397,4 @@ class TrelloController {
   }
 }
 
-export default new TrelloController();
+export default TrelloController;

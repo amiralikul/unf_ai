@@ -10,14 +10,12 @@ import {
 const prisma = new PrismaClient();
 
 class AIController {
-  constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-  }
+  static openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
 
   // Process AI query with user's data context
-  async processQuery(req, res) {
+  static async processQuery(req, res) {
     const { query, context, includeFiles, includeEmails, includeCards } = req.body;
     const userId = req.user.userId;
 
@@ -40,7 +38,7 @@ class AIController {
       // Call OpenAI API
       let aiResponse;
       try {
-        const completion = await this.openai.chat.completions.create({
+        const completion = await AIController.openai.chat.completions.create({
           model: 'gpt-3.5-turbo',
           messages: [
             {
@@ -63,7 +61,7 @@ class AIController {
 
       // Log the query for analytics (optional)
       try {
-        await this.logQuery(userId, query, aiResponse, contextData.summary);
+        await AIController.logQuery(userId, query, aiResponse, contextData.summary);
       } catch (logError) {
         console.warn('Failed to log AI query:', logError.message);
         // Don't fail the request if logging fails
@@ -88,7 +86,7 @@ class AIController {
   }
 
   // Gather relevant context data for the AI query
-  async gatherContextData(userId, options) {
+  static async gatherContextData(userId, options) {
     const { context, includeFiles, includeEmails, includeCards } = options;
     const contextData = {
       files: [],
@@ -173,7 +171,7 @@ class AIController {
   }
 
   // Build the prompt with context data
-  buildPrompt(query, contextData) {
+  static buildPrompt(query, contextData) {
     let prompt = `User Question: ${query}\n\nContext Data:\n`;
 
     // Add files context
@@ -212,7 +210,7 @@ class AIController {
   }
 
   // Log AI queries for analytics and debugging
-  async logQuery(userId, query, response, contextSummary) {
+  static async logQuery(userId, query, response, contextSummary) {
     try {
       // You might want to create a separate table for AI query logs
       // For now, we'll just log to console in a structured way
@@ -245,7 +243,7 @@ class AIController {
   }
 
   // Get AI query history (placeholder for future implementation)
-  async getQueryHistory(req, res) {
+  static async getQueryHistory(req, res) {
     const { page, limit } = req.query;
     const userId = req.user.userId;
 
@@ -271,7 +269,7 @@ class AIController {
   }
 
   // Get AI usage statistics
-  async getUsageStats(req, res) {
+  static async getUsageStats(req, res) {
     const userId = req.user.userId;
 
     try {
@@ -311,4 +309,4 @@ class AIController {
   }
 }
 
-export default new AIController();
+export default AIController;

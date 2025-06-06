@@ -2,20 +2,36 @@ import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { api } from './lib/api'
 import { useAuth, useGoogleAuthUrl, useLogout, authUtils } from './hooks/useAuth'
-import { useDriveFiles } from './hooks/useDriveFiles'
-import { useGmailMessages } from './hooks/useGmailMessages'
-import { useTrelloBoards } from './hooks/useTrelloBoards'
+import { useDriveFiles, useSyncDriveFiles } from './hooks/useDriveFiles'
+import { useGmailMessages, useSyncGmailMessages } from './hooks/useGmailMessages'
+import { useTrelloBoards, useSyncTrelloData } from './hooks/useTrelloBoards'
 import { useTrelloCards } from './hooks/useTrelloCards'
+import { useAIQuery, useAIStats } from './hooks/useAI'
 
 function App() {
   const [count, setCount] = useState(0)
+  const [aiQuery, setAiQuery] = useState('')
 
-  const { data: driveFiles } = useDriveFiles();
-  const { data: gmailMessages } = useGmailMessages();
-  const { data: trelloBoards } = useTrelloBoards();
+  // Data hooks with new response format
+  const { data: driveFiles, isLoading: driveLoading } = useDriveFiles();
+  const { data: gmailMessages, isLoading: gmailLoading } = useGmailMessages();
+  const { data: trelloBoards, isLoading: trelloLoading } = useTrelloBoards();
   const { data: trelloCards } = useTrelloCards(trelloBoards?.boards?.[0]?.id);
+  const { data: aiStats } = useAIStats();
 
-  console.log('📊 Data:', { driveFiles, gmailMessages, trelloBoards, trelloCards });
+  // Sync mutations
+  const syncDriveFiles = useSyncDriveFiles();
+  const syncGmailMessages = useSyncGmailMessages();
+  const syncTrelloData = useSyncTrelloData();
+  const aiQueryMutation = useAIQuery();
+
+  console.log('📊 Data:', {
+    driveFiles: driveFiles?.files || driveFiles,
+    gmailMessages: gmailMessages?.messages || gmailMessages,
+    trelloBoards: trelloBoards?.boards || trelloBoards,
+    trelloCards: trelloCards?.cards || trelloCards,
+    aiStats
+  });
 
   // Handle OAuth callback on page load
   useEffect(() => {
@@ -80,20 +96,108 @@ function App() {
                 <p className="text-lg">Welcome, {currentUser?.name || 'User'}!</p>
                 <p className="text-sm text-gray-400">{currentUser?.email}</p>
               </div>
-              <div className="flex space-x-3">
-                <button 
-                  onClick={() => setCount((count) => count + 1)}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors duration-200 shadow-lg"
-                >
-                  Count: {count}
-                </button>
-                <button 
-                  onClick={() => logoutMutation.mutate()}
-                  disabled={logoutMutation.isPending}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-lg font-semibold transition-colors duration-200 shadow-lg"
-                >
-                  {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
-                </button>
+              <div className="flex flex-col space-y-4">
+                {/* Data Status */}
+                <div className="grid grid-cols-3 gap-4 text-sm">
+                  <div className="bg-white/5 p-3 rounded-lg">
+                    <div className="font-semibold">Drive Files</div>
+                    <div className="text-gray-300">
+                      {driveLoading ? 'Loading...' : `${driveFiles?.files?.length || 0} files`}
+                    </div>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-lg">
+                    <div className="font-semibold">Gmail Messages</div>
+                    <div className="text-gray-300">
+                      {gmailLoading ? 'Loading...' : `${gmailMessages?.messages?.length || 0} messages`}
+                    </div>
+                  </div>
+                  <div className="bg-white/5 p-3 rounded-lg">
+                    <div className="font-semibold">Trello Boards</div>
+                    <div className="text-gray-300">
+                      {trelloLoading ? 'Loading...' : `${trelloBoards?.boards?.length || 0} boards`}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sync Buttons */}
+                <div className="flex space-x-2">
+                  <button
+                    onClick={() => syncDriveFiles.mutate()}
+                    disabled={syncDriveFiles.isPending}
+                    className="px-3 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 rounded-lg text-sm font-semibold transition-colors duration-200 shadow-lg"
+                  >
+                    {syncDriveFiles.isPending ? 'Syncing...' : 'Sync Drive'}
+                  </button>
+                  <button
+                    onClick={() => syncGmailMessages.mutate()}
+                    disabled={syncGmailMessages.isPending}
+                    className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 rounded-lg text-sm font-semibold transition-colors duration-200 shadow-lg"
+                  >
+                    {syncGmailMessages.isPending ? 'Syncing...' : 'Sync Gmail'}
+                  </button>
+                  <button
+                    onClick={() => syncTrelloData.mutate()}
+                    disabled={syncTrelloData.isPending}
+                    className="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-400 rounded-lg text-sm font-semibold transition-colors duration-200 shadow-lg"
+                  >
+                    {syncTrelloData.isPending ? 'Syncing...' : 'Sync Trello'}
+                  </button>
+                </div>
+
+                {/* AI Query Interface */}
+                <div className="bg-white/5 p-4 rounded-lg">
+                  <div className="font-semibold mb-2">🤖 AI Assistant</div>
+                  <div className="flex space-x-2">
+                    <input
+                      type="text"
+                      value={aiQuery}
+                      onChange={(e) => setAiQuery(e.target.value)}
+                      placeholder="Ask about your files, emails, or cards..."
+                      className="flex-1 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && aiQuery.trim()) {
+                          aiQueryMutation.mutate({ query: aiQuery.trim() });
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => aiQuery.trim() && aiQueryMutation.mutate({ query: aiQuery.trim() })}
+                      disabled={aiQueryMutation.isPending || !aiQuery.trim()}
+                      className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 rounded-lg font-semibold transition-colors duration-200 shadow-lg"
+                    >
+                      {aiQueryMutation.isPending ? 'Thinking...' : 'Ask AI'}
+                    </button>
+                  </div>
+                  {aiQueryMutation.data && (
+                    <div className="mt-3 p-3 bg-white/10 rounded-lg">
+                      <div className="text-sm font-semibold text-orange-300">AI Response:</div>
+                      <div className="text-sm mt-1">{aiQueryMutation.data.response}</div>
+                    </div>
+                  )}
+                  {aiQueryMutation.error && (
+                    <div className="mt-3 p-3 bg-red-500/20 rounded-lg">
+                      <div className="text-sm font-semibold text-red-300">Error:</div>
+                      <div className="text-sm mt-1">{aiQueryMutation.error.message}</div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Control Buttons */}
+                <div className="flex space-x-3">
+                  <button
+                    onClick={() => setCount((count) => count + 1)}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-colors duration-200 shadow-lg"
+                  >
+                    Count: {count}
+                  </button>
+                  <button
+                    onClick={() => logoutMutation.mutate()}
+                    disabled={logoutMutation.isPending}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 rounded-lg font-semibold transition-colors duration-200 shadow-lg"
+                  >
+                    {logoutMutation.isPending ? 'Logging out...' : 'Logout'}
+                  </button>
+                </div>
               </div>
             </div>
           )}

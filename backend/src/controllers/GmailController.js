@@ -12,7 +12,7 @@ const googleOAuth = new GoogleOAuthService();
 
 class GmailController {
   // Get Gmail messages with pagination and filtering
-  async getMessages(req, res) {
+  static async getMessages(req, res) {
     const { page, limit, query, labelIds, includeSpamTrash } = req.query;
     const userId = req.user.userId;
 
@@ -118,7 +118,7 @@ class GmailController {
   }
 
   // Get a specific message by ID
-  async getMessageById(req, res) {
+  static async getMessageById(req, res) {
     const { id } = req.params;
     const userId = req.user.userId;
 
@@ -148,7 +148,7 @@ class GmailController {
   }
 
   // Delete a message (from database only, not from Gmail)
-  async deleteMessage(req, res) {
+  static async deleteMessage(req, res) {
     const { id } = req.params;
     const userId = req.user.userId;
 
@@ -182,7 +182,7 @@ class GmailController {
   }
 
   // Sync messages from Gmail
-  async syncMessages(req, res) {
+  static async syncMessages(req, res) {
     const userId = req.user.userId;
 
     try {
@@ -271,7 +271,7 @@ class GmailController {
   }
 
   // Get message threads
-  async getThreads(req, res) {
+  static async getThreads(req, res) {
     const { page, limit } = req.query;
     const userId = req.user.userId;
 
@@ -350,4 +350,4 @@ class GmailController {
   }
 }
 
-export default new GmailController();
+export default GmailController;
