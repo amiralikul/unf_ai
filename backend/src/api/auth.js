@@ -1,11 +1,10 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
-import GoogleOAuthService from '../services/GoogleOAuthService.js';
+import googleOAuthService from '../services/GoogleOAuthService.js';
 import sessionService from '../services/SessionService.js';
 
 const router = express.Router();
 const prisma = new PrismaClient();
-const googleOAuth = new GoogleOAuthService();
 
 // Middleware to check authentication
 export const requireAuth = async (req, res, next) => {
@@ -41,7 +40,7 @@ export const requireAuth = async (req, res, next) => {
 // Start Google OAuth flow
 router.get('/google', (req, res) => {
   try {
-    const authUrl = googleOAuth.getAuthUrl();
+    const authUrl = googleOAuthService.getAuthUrl();
     res.json({ authUrl });
   } catch (error) {
     console.error('Error generating auth URL:', error);
@@ -59,10 +58,10 @@ router.get('/google/callback', async (req, res) => {
 
   try {
     // Exchange code for tokens
-    const tokens = await googleOAuth.getTokens(code);
-    
+    const tokens = await googleOAuthService.getTokens(code);
+
     // Get user info
-    const userInfo = await googleOAuth.getUserInfo(tokens);
+    const userInfo = await googleOAuthService.getUserInfo(tokens);
     
     // Find or create user in database
     let user = await prisma.user.findUnique({

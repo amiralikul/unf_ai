@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
 import trelloService from '../services/TrelloService.js';
-import GoogleOAuthService from '../services/GoogleOAuthService.js';
+import googleOAuthService from '../services/GoogleOAuthService.js';
 import sessionService from '../services/SessionService.js';
 import { createAIControllers } from './ai/index.js';
 import { createTrelloControllers } from './trello/index.js';
@@ -10,7 +10,7 @@ import { createGmailControllers } from './gmail/index.js';
 
 // Initialize shared dependencies
 const prisma = new PrismaClient();
-const googleOAuth = new GoogleOAuthService();
+const googleOAuth = googleOAuthService; // Alias for consistency
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });

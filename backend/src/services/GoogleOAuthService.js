@@ -141,4 +141,7 @@ class GoogleOAuthService {
   }
 }
 
-export default GoogleOAuthService; 
+// Create singleton instance
+const googleOAuthService = new GoogleOAuthService();
+
+export default googleOAuthService;

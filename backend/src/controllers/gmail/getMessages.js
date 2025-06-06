@@ -22,36 +22,33 @@ export const getMessagesController = (googleOAuth, prisma) => async (req, res) =
     // Build database query filters
     const whereClause = { userId };
     
-    // Add filter logic if needed
-    if (filter === 'unread') {
-      whereClause.isRead = false;
-    } else if (filter === 'read') {
-      whereClause.isRead = true;
-    } else if (filter === 'important') {
-      whereClause.isImportant = true;
+    // Add filter logic if needed (Email model doesn't have read/important flags yet)
+    // TODO: Add isRead, isImportant fields to Email model if needed
+    if (filter === 'recent') {
+      // Show emails from last 7 days
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      whereClause.receivedAt = { gte: sevenDaysAgo };
     }
     
     // Add search logic if provided
     if (search) {
       whereClause.OR = [
         { subject: { contains: search, mode: 'insensitive' } },
-        { snippet: { contains: search, mode: 'insensitive' } },
-        { from: { contains: search, mode: 'insensitive' } }
+        { body: { contains: search, mode: 'insensitive' } },
+        { sender: { contains: search, mode: 'insensitive' } }
       ];
     }
 
     // Get paginated results from database
     const [messages, total] = await Promise.all([
-      prisma.message.findMany({
+      prisma.email.findMany({
         where: whereClause,
         skip: pagination.skip,
         take: pagination.limit,
-        orderBy: { receivedAt: 'desc' },
-        include: {
-          labels: true
-        }
+        orderBy: { receivedAt: 'desc' }
       }),
-      prisma.message.count({ where: whereClause })
+      prisma.email.count({ where: whereClause })
     ]);
 
     // Calculate pagination metadata
@@ -60,8 +57,11 @@ export const getMessagesController = (googleOAuth, prisma) => async (req, res) =
     // Transform response to match frontend expectations
     const transformedMessages = messages.map(message => ({
       ...message,
-      id: message.gmailId, // Frontend expects 'id' field
-      labelNames: message.labels.map(label => label.name)
+      id: message.googleId, // Frontend expects 'id' field
+      gmailId: message.googleId, // For backward compatibility
+      from: message.sender,
+      to: message.recipient,
+      labelNames: [] // Email model doesn't have labels yet
     }));
 
     // Send response

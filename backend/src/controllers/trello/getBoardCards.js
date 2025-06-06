@@ -44,7 +44,7 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
     // Fetch cards from Trello
     let trelloCards;
     try {
-      trelloCards = await trelloService.getBoardCards(boardId, trelloApiKey, trelloToken);
+      trelloCards = await trelloService.getCardsForBoard(trelloApiKey, trelloToken, boardId);
     } catch (error) {
       throw new ExternalServiceError('Trello', error.message, error);
     }
