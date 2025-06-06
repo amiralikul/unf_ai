@@ -95,7 +95,7 @@ class GoogleOAuthService {
 
       // Get detailed info for each message
       const messages = await Promise.all(
-        listResponse.data.messages.slice(0, 10).map(async (msg) => {
+        listResponse.data.messages.map(async (msg) => {
           const detail = await gmail.users.messages.get({
             userId: 'me',
             id: msg.id,
@@ -105,6 +105,14 @@ class GoogleOAuthService {
 
           const headers = detail.data.payload.headers;
           const getHeader = (name) => headers.find(h => h.name === name)?.value || '';
+          
+          // Extract snippet if available
+          const snippet = detail.data.snippet || '';
+          
+          // Check for labels to determine if message is unread or important
+          const labels = detail.data.labelIds || [];
+          const isUnread = labels.includes('UNREAD');
+          const isImportant = labels.includes('IMPORTANT');
 
           return {
             id: msg.id,
@@ -113,7 +121,10 @@ class GoogleOAuthService {
             sender: getHeader('From'),
             recipient: getHeader('To'),
             date: getHeader('Date'),
-            receivedAt: new Date(parseInt(detail.data.internalDate))
+            receivedAt: new Date(parseInt(detail.data.internalDate)),
+            snippet,
+            isUnread,
+            isImportant
           };
         })
       );

@@ -103,14 +103,14 @@ router.get('/google/callback', async (req, res) => {
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     });
 
-    // Redirect to frontend without session token
+    // Redirect to frontend auth callback route
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}?success=true`);
+    res.redirect(`${frontendUrl}/auth/callback?success=true`);
 
   } catch (error) {
     console.error('OAuth callback error:', error);
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}?error=auth_failed`);
+    res.redirect(`${frontendUrl}/auth/callback?error=auth_failed`);
   }
 });
 

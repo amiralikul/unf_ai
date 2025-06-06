@@ -1,70 +1,149 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { api } from '@/lib/api';
 
-// Main authentication hook
+/**
+ * Comprehensive authentication hook using React Query
+ * 
+ * This hook provides all authentication functionality:
+ * - Authentication state (isAuthenticated, user)
+ * - Loading and error states
+ * - Login and logout methods
+ * - OAuth callback handling
+ * 
+ * @returns {Object} Authentication state and methods
+ */
 export const useAuth = () => {
-  return useQuery({
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Get authentication status
+  const { 
+    data: authData, 
+    isLoading, 
+    error: authError,
+    refetch: refreshAuthStatus
+  } = useQuery({
     queryKey: ['auth', 'status'],
     queryFn: api.getAuthStatus,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false,
   });
-};
 
-// Get Google OAuth URL
-export const useGoogleAuthUrl = () => {
-  return useMutation({
+  console.log('Auth data:', authData);
+
+  // Extract authentication data
+  const isAuthenticated = authData?.isAuthenticated || false;
+  const user = authData?.user || null;
+
+  // Login mutation
+  const loginMutation = useMutation({
     mutationFn: api.getGoogleAuthUrl,
     onSuccess: (data) => {
-      // Redirect to Google OAuth
-      window.location.href = data.authUrl;
+      if (data.authUrl) {
+        window.location.href = data.authUrl;
+      } else {
+        throw new Error('Failed to get authentication URL');
+      }
     },
     onError: (error) => {
-      console.error('Failed to get Google auth URL:', error);
+      console.error('Login failed:', error);
     },
   });
-};
 
-// Logout
-export const useLogout = () => {
-  const queryClient = useQueryClient();
-  
-  return useMutation({
+  // Logout mutation
+  const logoutMutation = useMutation({
     mutationFn: api.logout,
     onSuccess: () => {
       // Clear all cached data
       queryClient.clear();
       
-      // Refresh the page to reset state
-      window.location.reload();
+      // Navigate to login page
+      navigate('/login', { replace: true });
     },
     onError: (error) => {
       console.error('Logout failed:', error);
-      // Still reload
-      window.location.reload();
+      // Still navigate to login page
+      navigate('/login', { replace: true });
     },
   });
+
+  /**
+   * Handle OAuth callback after successful authentication
+   * Refreshes auth status and redirects to the intended destination
+   */
+  const handleAuthCallback = async () => {
+    try {
+      // Refresh authentication status
+      await refreshAuthStatus();
+      
+      // Redirect to intended destination or default to home
+      const from = location.state?.from?.pathname || '/';
+      navigate(from, { replace: true });
+    } catch (error) {
+      console.error('Error handling auth callback:', error);
+      navigate('/login', { replace: true, state: { error: 'Authentication failed. Please try again.' } });
+    }
+  };
+
+  // Combine errors from auth status and login
+  const error = authError || loginMutation.error;
+
+  return {
+    // Authentication state
+    isAuthenticated,
+    isLoading,
+    user,
+    error: error ? error.message || 'Authentication error' : null,
+    
+    // Authentication methods
+    login: () => loginMutation.mutate(),
+    logout: () => logoutMutation.mutate(),
+    refreshAuthStatus,
+    handleAuthCallback,
+    
+    // Raw state (for advanced use cases)
+    loginMutation,
+    logoutMutation,
+    authData
+  };
 };
 
-// Auth utility functions
-export const authUtils = {
-  // Handle OAuth callback
-  handleOAuthCallback: () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const success = urlParams.get('success');
-    const error = urlParams.get('error');
-    
-    if (success) {
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      return { success: true };
-    } else if (error) {
-      console.error('OAuth error:', error);
-      // Clean URL
-      window.history.replaceState({}, document.title, window.location.pathname);
-      return { success: false, error };
-    }
-    
-    return { success: false };
-  }
-}; 
+/**
+ * @deprecated Use the main useAuth hook instead
+ */
+export const useGoogleAuthUrl = () => {
+  console.warn('useGoogleAuthUrl is deprecated. Use useAuth().login instead.');
+  const { login, loginMutation } = useAuth();
+  return {
+    ...loginMutation,
+    mutate: login
+  };
+};
+
+/**
+ * @deprecated Use the main useAuth hook instead
+ */
+export const useLogout = () => {
+  console.warn('useLogout is deprecated. Use useAuth().logout instead.');
+  const { logout, logoutMutation } = useAuth();
+  return {
+    ...logoutMutation,
+    mutate: logout
+  };
+};
+
+/**
+ * @deprecated Use useAuth().handleAuthCallback instead
+ */
+
+// Export a function to get auth state from queryClient (for non-component code)
+export const getAuthState = () => {
+  const queryClient = useQueryClient();
+  const authData = queryClient.getQueryData(['auth', 'status']);
+  return {
+    isAuthenticated: authData?.isAuthenticated || false,
+    user: authData?.user || null
+  };
+};

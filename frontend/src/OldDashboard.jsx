@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { api } from './lib/api'
-import { useAuth, useGoogleAuthUrl, useLogout, authUtils } from './hooks/useAuth'
-import { useDriveFiles, useSyncDriveFiles } from './hooks/useDriveFiles'
-import { useGmailMessages, useSyncGmailMessages } from './hooks/useGmailMessages'
-import { useTrelloBoards, useSyncTrelloData } from './hooks/useTrelloBoards'
-import { useTrelloCards } from './hooks/useTrelloCards'
-import { useAIQuery, useAIStats } from './hooks/useAI'
+import { api } from '@/lib/api'
+import { useAuth, useGoogleAuthUrl, useLogout } from '@/hooks/useAuth'
+import { useDriveFiles, useSyncDriveFiles } from '@/hooks/useDriveFiles'
+import { useGmailMessages, useSyncGmailMessages } from '@/hooks/useGmailMessages'
+import { useTrelloBoards, useSyncTrelloData } from '@/hooks/useTrelloBoards'
+import { useTrelloCards } from '@/hooks/useTrelloCards'
+import { useAIQuery, useAIStats } from '@/hooks/useAI'
 
-function App() {
+function OldDashboard() {
   const [count, setCount] = useState(0)
   const [aiQuery, setAiQuery] = useState('')
 
@@ -33,17 +33,7 @@ function App() {
     aiStats
   });
 
-  // Handle OAuth callback on page load
-  useEffect(() => {
-    const result = authUtils.handleOAuthCallback();
-    if (result.success) {
-      console.log('✅ OAuth success!');
-      window.location.reload(); // Refresh to update auth state
-    } else if (result.error) {
-      console.error('❌ OAuth failed:', result.error);
-    }
-  }, []);
-  
+
   // Test backend connection
   const { data: healthData, isLoading: healthLoading, error: healthError } = useQuery({
     queryKey: ['health'],
@@ -231,4 +221,4 @@ function App() {
   )
 }
 
-export default App
+export default OldDashboard

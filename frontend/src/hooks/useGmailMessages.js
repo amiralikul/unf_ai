@@ -1,11 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
-import { queryKeys } from '../lib/queryClient';
-import { useAuth } from './useAuth';
+import { api } from '@/lib/api';
+import { queryKeys } from '@/lib/queryClient';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useGmailMessages = (params = {}) => {
-  const { data: authData } = useAuth();
-  const isAuthenticated = authData?.isAuthenticated || false;
+  const { isAuthenticated, authData } = useAuth();
+
+  console.log('authData:', authData);
+  console.log('isAuthenticated:', isAuthenticated);
 
   return useQuery({
     queryKey: [...queryKeys.gmailMessages, params],
@@ -16,8 +18,7 @@ export const useGmailMessages = (params = {}) => {
 };
 
 export const useGmailMessage = (id) => {
-  const { data: authData } = useAuth();
-  const isAuthenticated = authData?.isAuthenticated || false;
+  const { isAuthenticated } = useAuth();
 
   return useQuery({
     queryKey: ['gmail', 'message', id],
@@ -28,8 +29,7 @@ export const useGmailMessage = (id) => {
 };
 
 export const useGmailThreads = (params = {}) => {
-  const { data: authData } = useAuth();
-  const isAuthenticated = authData?.isAuthenticated || false;
+  const { isAuthenticated } = useAuth();
 
   return useQuery({
     queryKey: ['gmail', 'threads', params],

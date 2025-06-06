@@ -22,13 +22,18 @@ export const getMessagesController = (googleOAuth, prisma) => async (req, res) =
     // Build database query filters
     const whereClause = { userId };
     
-    // Add filter logic if needed (Email model doesn't have read/important flags yet)
-    // TODO: Add isRead, isImportant fields to Email model if needed
+    // Add filter logic based on the filter parameter
     if (filter === 'recent') {
       // Show emails from last 7 days
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       whereClause.receivedAt = { gte: sevenDaysAgo };
+    } else if (filter === 'unread') {
+      // Show only unread emails
+      whereClause.isRead = false;
+    } else if (filter === 'important') {
+      // Show only important emails
+      whereClause.isImportant = true;
     }
     
     // Add search logic if provided
@@ -61,6 +66,8 @@ export const getMessagesController = (googleOAuth, prisma) => async (req, res) =
       gmailId: message.googleId, // For backward compatibility
       from: message.sender,
       to: message.recipient,
+      isRead: message.isRead,
+      isImportant: message.isImportant,
       labelNames: [] // Email model doesn't have labels yet
     }));
 

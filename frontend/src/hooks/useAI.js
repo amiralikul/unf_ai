@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
-import { useAuth } from './useAuth';
+import { api } from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useAIQuery = () => {
   const queryClient = useQueryClient();
@@ -18,8 +18,7 @@ export const useAIQuery = () => {
 };
 
 export const useAIHistory = (params = {}) => {
-  const { data: authData } = useAuth();
-  const isAuthenticated = authData?.isAuthenticated || false;
+  const { isAuthenticated } = useAuth();
   
   return useQuery({
     queryKey: ['ai', 'history', params],
@@ -30,8 +29,7 @@ export const useAIHistory = (params = {}) => {
 };
 
 export const useAIStats = () => {
-  const { data: authData } = useAuth();
-  const isAuthenticated = authData?.isAuthenticated || false;
+  const { isAuthenticated } = useAuth();
   
   return useQuery({
     queryKey: ['ai', 'stats'],

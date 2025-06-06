@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { api } from '../lib/api';
-import { useAuth } from './useAuth';
+import { api } from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useTrelloCards = (boardId, params = {}) => {
-  const { data: authData } = useAuth();
-  const isAuthenticated = authData?.isAuthenticated || false;
+  const { isAuthenticated } = useAuth();
 
   return useQuery({
     queryKey: ['trelloCards', boardId, params],

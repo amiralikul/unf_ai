@@ -17,13 +17,10 @@ export const getMessageByIdController = (googleOAuth, prisma) => async (req, res
 
   try {
     // Get message from database
-    const message = await prisma.message.findFirst({
+    const message = await prisma.email.findFirst({
       where: {
-        gmailId: messageId,
+        googleId: messageId,
         userId
-      },
-      include: {
-        labels: true
       }
     });
 
@@ -35,8 +32,11 @@ export const getMessageByIdController = (googleOAuth, prisma) => async (req, res
     // Transform response to match frontend expectations
     const transformedMessage = {
       ...message,
-      id: message.gmailId, // Frontend expects 'id' field
-      labelNames: message.labels.map(label => label.name)
+      id: message.googleId, // Frontend expects 'id' field
+      gmailId: message.googleId, // For backward compatibility
+      from: message.sender,
+      to: message.recipient,
+      labelNames: [] // Email model doesn't have labels yet
     };
 
     // Send response

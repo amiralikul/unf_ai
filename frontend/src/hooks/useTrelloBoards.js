@@ -1,11 +1,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
-import { queryKeys } from '../lib/queryClient';
-import { useAuth } from './useAuth';
+import { api } from '@/lib/api';
+import { queryKeys } from '@/lib/queryClient';
+import { useAuth } from '@/hooks/useAuth';
 
 export const useTrelloBoards = (params = {}) => {
-  const { data: authData } = useAuth();
-  const isAuthenticated = authData?.isAuthenticated || false;
+  const { isAuthenticated } = useAuth();
 
   return useQuery({
     queryKey: [...queryKeys.trelloBoards, params],
@@ -16,8 +15,7 @@ export const useTrelloBoards = (params = {}) => {
 };
 
 export const useTrelloBoard = (boardId) => {
-  const { data: authData } = useAuth();
-  const isAuthenticated = authData?.isAuthenticated || false;
+  const { isAuthenticated } = useAuth();
 
   return useQuery({
     queryKey: ['trello', 'board', boardId],

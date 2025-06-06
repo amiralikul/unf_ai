@@ -16,34 +16,38 @@ export const syncMessagesController = (googleOAuth, prisma) => async (req, res) 
   const userId = req.user.userId;
 
   try {
-    // Get Gmail client
-    const gmailClient = await googleOAuth.getGmailClient(userId);
+    // Get user tokens from database
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { 
+        googleAccessToken: true,
+        googleRefreshToken: true
+      }
+    });
     
-    if (!gmailClient) {
+    if (!user || !user.googleAccessToken) {
       throw new AuthenticationError('Gmail authentication required', 'GMAIL_AUTH_REQUIRED');
     }
-
-    // Fetch messages from Gmail
+    
+    // Create tokens object
+    const tokens = {
+      access_token: user.googleAccessToken,
+      refresh_token: user.googleRefreshToken
+    };
+    
+    // Fetch messages from Gmail using the service
     let gmailMessages;
     try {
-      const response = await gmailClient.users.messages.list({
-        userId: 'me',
-        maxResults: 100,
-        q: 'is:important OR is:unread'
-      });
+      // Use the existing getGmailMessages method with a higher limit
+      gmailMessages = await googleOAuth.getGmailMessages(tokens, 100);
       
-      const messageIds = response.data.messages || [];
-      gmailMessages = [];
-      
-      // Fetch full message details for each message ID
-      for (const messageRef of messageIds) {
-        const messageResponse = await gmailClient.users.messages.get({
-          userId: 'me',
-          id: messageRef.id,
-          format: 'full'
+      if (!gmailMessages || gmailMessages.length === 0) {
+        // Return early if no messages found
+        return sendSuccess(res, {
+          message: 'No Gmail messages found to synchronize',
+          stats: { total: 0, created: 0, updated: 0, failed: 0 },
+          timestamp: new Date().toISOString()
         });
-        
-        gmailMessages.push(messageResponse.data);
       }
     } catch (error) {
       throw new ExternalServiceError('Gmail', error.message, error);
@@ -61,39 +65,38 @@ export const syncMessagesController = (googleOAuth, prisma) => async (req, res) 
       // Process each message
       for (const message of gmailMessages) {
         try {
-          // Extract message details
-          const headers = message.payload.headers;
-          const subject = headers.find(h => h.name === 'Subject')?.value || '(No Subject)';
-          const from = headers.find(h => h.name === 'From')?.value || '';
-          const to = headers.find(h => h.name === 'To')?.value || '';
-          const date = headers.find(h => h.name === 'Date')?.value || '';
-          const receivedAt = date ? new Date(date) : new Date();
+          // Message details are already extracted by getGmailMessages
+          const subject = message.subject || '(No Subject)';
+          const from = message.sender || '';
+          const to = message.recipient || '';
+          const receivedAt = message.receivedAt || new Date();
+          // Use values provided by getGmailMessages
           const snippet = message.snippet || '';
-          const isUnread = message.labelIds?.includes('UNREAD') || false;
-          const isImportant = message.labelIds?.includes('IMPORTANT') || false;
+          const isUnread = message.isUnread || false;
+          const isImportant = message.isImportant || false;
           
           // Check if message exists
-          const existingMessage = await tx.message.findUnique({
-            where: { gmailId: message.id }
+          const existingMessage = await tx.email.findUnique({
+            where: { googleId: message.id }
           });
           
           // Save or update message
-          const savedMessage = await tx.message.upsert({
-            where: { gmailId: message.id },
+          const savedMessage = await tx.email.upsert({
+            where: { googleId: message.id },
             update: {
               subject,
-              from,
-              to,
+              sender: from,
+              recipient: to,
               snippet,
               receivedAt,
               isRead: !isUnread,
               isImportant
             },
             create: {
-              gmailId: message.id,
+              googleId: message.id,
               subject,
-              from,
-              to,
+              sender: from,
+              recipient: to,
               snippet,
               receivedAt,
               isRead: !isUnread,
@@ -102,35 +105,8 @@ export const syncMessagesController = (googleOAuth, prisma) => async (req, res) 
             },
           });
           
-          // Process labels
-          if (message.labelIds && message.labelIds.length > 0) {
-            // First, remove existing labels
-            await tx.messageLabel.deleteMany({
-              where: { messageId: savedMessage.id }
-            });
-            
-            // Then add current labels
-            for (const labelId of message.labelIds) {
-              // Find or create label
-              const label = await tx.label.upsert({
-                where: { gmailId: labelId },
-                update: {},
-                create: {
-                  gmailId: labelId,
-                  name: labelId.toLowerCase(),
-                  userId
-                }
-              });
-              
-              // Connect label to message
-              await tx.messageLabel.create({
-                data: {
-                  message: { connect: { id: savedMessage.id } },
-                  label: { connect: { id: label.id } }
-                }
-              });
-            }
-          }
+          // Skip label processing for now as we don't have label data
+          // from the getGmailMessages method
           
           if (existingMessage) {
             results.updated++;

@@ -63,6 +63,9 @@ model Email {
   sender      String
   recipient   String
   body        String?
+  snippet     String?
+  isRead      Boolean  @default(true)
+  isImportant Boolean  @default(false)
   receivedAt  DateTime
   createdAt   DateTime @default(now())
   

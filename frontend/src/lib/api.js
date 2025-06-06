@@ -32,8 +32,16 @@ apiClient.interceptors.response.use(
     // If response has success field, it's our new format
     if (typeof data === 'object' && data !== null && 'success' in data) {
       if (data.success) {
-        // Return the data field for successful responses
-        return data.data || data;
+        // Return both data and meta for successful responses
+        const result = data.data || data;
+        // If there's pagination metadata, include it in the result
+        if (data.meta && Object.keys(data.meta).length > 0) {
+          return {
+            ...result,
+            pagination: data.meta
+          };
+        }
+        return result;
       } else {
         // Throw error for failed responses
         const error = new Error(data.error || 'API request failed');
@@ -46,8 +54,34 @@ apiClient.interceptors.response.use(
     // Fallback for legacy responses
     return data;
   },
-  (error) => {
+  async (error) => {
     console.error('API Error:', error.response?.data || error.message);
+
+    // Handle authentication errors (401 Unauthorized)
+    if (error.response?.status === 401 && !error.config._retry) {
+      error.config._retry = true; // Mark to prevent infinite retry loops
+      
+      try {
+        // Try to refresh authentication status
+        // This will check if the session is still valid on the server
+        const authResponse = await apiClient.get('/auth/status');
+        
+        // If we're still authenticated, retry the original request
+        if (authResponse.isAuthenticated) {
+          return apiClient(error.config);
+        } else {
+          // If we're not authenticated, redirect to login
+          console.log('Session expired, redirecting to login');
+          window.location.href = '/login';
+          return Promise.reject(new Error('Authentication required. Please log in.'));
+        }
+      } catch (refreshError) {
+        // If refresh fails, redirect to login
+        console.log('Failed to refresh authentication, redirecting to login');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
 
     // Handle standardized error responses
     const errorData = error.response?.data;
@@ -92,6 +126,8 @@ export const api = {
 
   // Gmail messages
   getGmailMessages: (params = {}) => {
+
+    console.log('getGmailMessages params:', params);
     const searchParams = new URLSearchParams();
     if (params.page) searchParams.set('page', params.page.toString());
     if (params.limit) searchParams.set('limit', params.limit.toString());
@@ -158,4 +194,4 @@ export const api = {
   getAIStats: () => apiClient.get('/api/ai/stats'),
 };
 
-export default apiClient; 
+export default apiClient;
