@@ -1,13 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { queryKeys } from '../lib/queryClient';
+import { useAuth } from './useAuth';
 
 export const useDriveFiles = () => {
+  const { data: authData } = useAuth();
+  const isAuthenticated = authData?.isAuthenticated || false;
+  
   return useQuery({
     queryKey: queryKeys.driveFiles,
     queryFn: api.getDriveFiles,
     staleTime: 2 * 60 * 1000, // 2 minutes for file data
-    enabled: !!localStorage.getItem('authToken'), // Only fetch when authenticated
+    enabled: isAuthenticated, // Only fetch when authenticated
   });
 };
 
