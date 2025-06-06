@@ -61,8 +61,7 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
               name: card.name,
               description: card.desc,
               url: card.url,
-              dueDate: card.due ? new Date(card.due) : null,
-              closed: card.closed
+              dueDate: card.due ? new Date(card.due) : null
             },
             create: {
               trelloId: card.id,
@@ -70,11 +69,14 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
               description: card.desc,
               url: card.url,
               dueDate: card.due ? new Date(card.due) : null,
-              closed: card.closed,
-              userId,
               board: {
                 connect: {
                   id: board.id
+                }
+              },
+              user: {
+                connect: {
+                  id: userId
                 }
               }
             },
@@ -96,10 +98,19 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
     };
     
     // Add filter logic if needed
-    if (filter === 'active') {
-      whereClause.closed = false;
-    } else if (filter === 'closed') {
-      whereClause.closed = true;
+    if (filter === 'recent') {
+      // Show cards created in the last 30 days
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      whereClause.createdAt = { gte: thirtyDaysAgo };
+    } else if (filter === 'due-soon') {
+      // Show cards with due dates in the next 7 days
+      const nextWeek = new Date();
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      whereClause.dueDate = {
+        gte: new Date(),
+        lte: nextWeek
+      };
     }
 
     // Get paginated results from database
