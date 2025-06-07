@@ -40,4 +40,22 @@ router.get('/nl-to-sql/health',
   asyncHandler(controllers.ai.nlToSqlHealth)
 );
 
+// LangChain-based NL-to-SQL routes
+// POST /api/ai/langchain/nl-to-sql - Process natural language to SQL using LangChain
+router.post('/langchain/nl-to-sql',
+  validateBody(nlToSqlSchema),
+  asyncHandler(controllers.ai.langchainNlToSql)
+);
+
+// GET /api/ai/langchain/nl-to-sql/health - Health check for LangChain NL-to-SQL functionality
+router.get('/langchain/nl-to-sql/health',
+  asyncHandler(controllers.ai.langchainNlToSqlHealth)
+);
+
+// POST /api/ai/compare/nl-to-sql - Compare original vs LangChain implementations
+router.post('/compare/nl-to-sql',
+  validateBody(nlToSqlSchema),
+  asyncHandler(controllers.ai.compareNlToSql)
+);
+
 export default router;
