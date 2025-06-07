@@ -38,3 +38,15 @@ export const useAIStats = () => {
     enabled: isAuthenticated,
   });
 };
+
+export const useNLToSQL = () => {
+  return useMutation({
+    mutationFn: (question) => api.queryNLToSQL(question),
+    onSuccess: (data) => {
+      console.log('NL-to-SQL Query successful:', data);
+    },
+    onError: (error) => {
+      console.error('NL-to-SQL Query failed:', error);
+    },
+  });
+};

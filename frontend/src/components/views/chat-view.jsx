@@ -5,18 +5,20 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { SendHorizontal, Settings, Paperclip, Smile } from "lucide-react"
+import { useNLToSQL } from "@/hooks/useAI"
 
 export default function ChatView() {
   const [messages, setMessages] = useState([
     {
       id: "1",
-      content: "Hello! How can I help you today?",
+      content: "Hello! I can help you analyze your data using natural language queries. Ask me questions like 'How many files do I have?' or 'Show me my recent emails'.",
       sender: "ai",
       timestamp: new Date(),
     },
   ])
   const [input, setInput] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const nlToSQLMutation = useNLToSQL()
+  const isLoading = nlToSQLMutation.isPending
 
   const handleSendMessage = async () => {
     if (!input.trim()) return
@@ -30,31 +32,35 @@ export default function ChatView() {
     }
 
     setMessages((prev) => [...prev, userMessage])
+    const currentInput = input
     setInput("")
-    setIsLoading(true)
 
-    // Simulate AI response after a delay
-    setTimeout(() => {
-      const aiResponses = [
-        "I understand your question. Let me think about that...",
-        "That's an interesting point. Here's what I think...",
-        "Based on my knowledge, I would suggest...",
-        "I can help you with that. Here's some information...",
-        "Let me provide some insights on this topic...",
-      ]
-
-      const randomResponse = aiResponses[Math.floor(Math.random() * aiResponses.length)]
-
+    try {
+      // Call the NL-to-SQL API
+      const response = await nlToSQLMutation.mutateAsync(currentInput)
+      
       const aiMessage = {
         id: Date.now().toString(),
-        content: randomResponse,
+        content: response.answer,
         sender: "ai",
         timestamp: new Date(),
+        sqlInfo: response.sql, // Store SQL info for debugging/display
       }
 
       setMessages((prev) => [...prev, aiMessage])
-      setIsLoading(false)
-    }, 1500)
+    } catch (error) {
+      console.error('Failed to process query:', error)
+      
+      const errorMessage = {
+        id: Date.now().toString(),
+        content: `Sorry, I encountered an error: ${error.message || 'Failed to process your query'}. Please try again.`,
+        sender: "ai",
+        timestamp: new Date(),
+        isError: true,
+      }
+
+      setMessages((prev) => [...prev, errorMessage])
+    }
   }
 
   const handleKeyDown = (e) => {

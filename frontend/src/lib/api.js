@@ -194,6 +194,12 @@ export const api = {
     return apiClient.get(url);
   },
   getAIStats: () => apiClient.get('/api/ai/stats'),
+  
+  // NL to SQL queries
+  queryNLToSQL: (question) => {
+    return apiClient.post('/api/ai/nl-to-sql', { question });
+  },
+  getNLToSQLHealth: () => apiClient.get('/api/ai/nl-to-sql/health'),
 };
 
 export default apiClient;

@@ -52,6 +52,10 @@ export const aiQuerySchema = z.object({
   includeCards: z.boolean().default(true),
 });
 
+export const nlToSqlSchema = z.object({
+  question: z.string().min(1, 'Question is required').max(1000, 'Question too long'),
+});
+
 // Response schemas for consistent API responses
 export const successResponseSchema = z.object({
   success: z.boolean().default(true),
