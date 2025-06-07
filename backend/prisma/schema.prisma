@@ -97,8 +97,13 @@ model TrelloCard {
   description String?
   url         String?
   listName    String?
+  listId      String?  // Trello list ID for status mapping
+  status      String?  // To Do, In Progress, Review, Done
+  priority    String?  // Low, Medium, High
+  position    Float?   // Card position in list
   dueDate     DateTime?
   createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt @default(now())
   
   boardId String
   board   TrelloBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
@@ -108,6 +113,8 @@ model TrelloCard {
   
   @@index([boardId])
   @@index([userId])
+  @@index([status])
+  @@index([priority])
 }
 
 model Session {

@@ -13,6 +13,7 @@ export const idParamSchema = z.object({
 // Drive schemas
 export const driveFilesQuerySchema = z.object({
   ...paginationSchema.shape,
+  search: z.string().optional(),
   mimeType: z.string().optional(),
   modifiedAfter: z.string().datetime().optional(),
   modifiedBefore: z.string().datetime().optional(),
@@ -21,7 +22,7 @@ export const driveFilesQuerySchema = z.object({
 // Gmail schemas
 export const gmailMessagesQuerySchema = z.object({
   ...paginationSchema.shape,
-  query: z.string().optional(),
+  search: z.string().optional(),
   labelIds: z.array(z.string()).optional(),
   includeSpamTrash: z.boolean().default(false),
 });
@@ -34,7 +35,8 @@ export const trelloBoardsQuerySchema = z.object({
 
 export const trelloCardsQuerySchema = z.object({
   ...paginationSchema.shape,
-  filter: z.enum(['all', 'open', 'closed']).default('open'),
+  search: z.string().optional(),
+  filter: z.string().optional().default('all'), // Made more flexible to accept any status value
 });
 
 export const trelloBoardParamSchema = z.object({

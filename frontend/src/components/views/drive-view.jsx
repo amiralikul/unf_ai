@@ -1,10 +1,9 @@
-import React, { useState } from "react"
+import React from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { File, FileText, Folder, ImageIcon, Search, Upload, FolderPlus, MoreHorizontal, RefreshCw, AlertCircle } from "lucide-react"
+import { File, FileText, Folder, ImageIcon, Upload, FolderPlus, MoreHorizontal, RefreshCw, AlertCircle } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { useDriveFiles, useSyncDriveFiles } from "@/hooks/useDriveFiles"
 import { usePagination } from "@/hooks/usePagination"
@@ -63,7 +62,6 @@ const formatDate = (dateString) => {
 }
 
 export default function DriveView() {
-  const [searchQuery, setSearchQuery] = useState("")
   
   // Initialize pagination hook with default values
   const paginationHook = usePagination({
@@ -81,8 +79,7 @@ export default function DriveView() {
     error 
   } = useDriveFiles({ 
     page: paginationHook.page, 
-    size: paginationHook.limit,
-    search: searchQuery || undefined
+    limit: paginationHook.limit
   })
   
   // Update pagination hook when we have data
@@ -98,12 +95,6 @@ export default function DriveView() {
     mutate: syncFiles, 
     isPending: isSyncing 
   } = useSyncDriveFiles()
-  
-  // Handle search
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value)
-    paginationHook.firstPage() // Reset to first page on new search
-  }
   
   // Handle refresh
   const handleRefresh = () => {
@@ -194,53 +185,38 @@ export default function DriveView() {
           </Badge>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search files..." 
-                className="pl-8 w-full" 
-                value={searchQuery}
-                onChange={handleSearch}
-              />
-            </div>
-            <div className="flex items-center gap-2 justify-end sm:justify-start">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={handleRefresh}
-                disabled={isSyncing}
-                className="shrink-0"
-              >
-                <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button className="shrink-0">
-                <Upload className="mr-2 h-4 w-4" />
-                Upload
-              </Button>
-              <Button variant="outline" className="shrink-0">
-                <FolderPlus className="mr-2 h-4 w-4" />
-                New Folder
-              </Button>
-            </div>
+          <div className="flex items-center gap-2 justify-end pb-4">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleRefresh}
+              disabled={isSyncing}
+              className="shrink-0"
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button className="shrink-0">
+              <Upload className="mr-2 h-4 w-4" />
+              Upload
+            </Button>
+            <Button variant="outline" className="shrink-0">
+              <FolderPlus className="mr-2 h-4 w-4" />
+              New Folder
+            </Button>
           </div>
 
           {files.length === 0 ? (
             <div className="text-center py-10">
-              <p className="text-muted-foreground">
-                {searchQuery ? 'No files found matching your search' : 'No files found'}
-              </p>
-              {!searchQuery && (
-                <Button 
-                  onClick={handleRefresh} 
-                  variant="outline" 
-                  className="mt-4"
-                  disabled={isSyncing}
-                >
-                  <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                  Sync from Google Drive
-                </Button>
-              )}
+              <p className="text-muted-foreground">No files found</p>
+              <Button 
+                onClick={handleRefresh} 
+                variant="outline" 
+                className="mt-4"
+                disabled={isSyncing}
+              >
+                <RefreshCw className={`mr-2 h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                Sync from Google Drive
+              </Button>
             </div>
           ) : (
             <div className="w-full overflow-hidden">

@@ -1,10 +1,9 @@
-import React, { useState } from "react"
+import React from "react"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Search, RefreshCw, Archive, Trash2, AlertCircle } from "lucide-react"
+import { RefreshCw, Archive, Trash2, AlertCircle } from "lucide-react"
 import { useGmailMessages, useSyncGmailMessages } from "@/hooks/useGmailMessages"
 import { usePagination } from "@/hooks/usePagination"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -20,7 +19,6 @@ import {
 import { format, isToday, isYesterday, parseISO } from "date-fns"
 
 export default function GmailView() {
-  const [searchQuery, setSearchQuery] = useState("")
   
   // Initialize pagination hook with default values
   const paginationHook = usePagination({
@@ -38,8 +36,7 @@ export default function GmailView() {
     error 
   } = useGmailMessages({ 
     page: paginationHook.page, 
-    limit: paginationHook.limit,
-    query: searchQuery || undefined
+    limit: paginationHook.limit
   })
   
   // Update pagination hook when we have data
@@ -70,12 +67,6 @@ export default function GmailView() {
     } catch (error) {
       return dateString
     }
-  }
-  
-  // Handle search
-  const handleSearch = (e) => {
-    setSearchQuery(e.target.value)
-    paginationHook.firstPage() // Reset to first page on new search
   }
   
   // Handle refresh
@@ -143,33 +134,22 @@ export default function GmailView() {
           </Badge>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pb-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search emails..." 
-                className="pl-8 w-full" 
-                value={searchQuery}
-                onChange={handleSearch}
-              />
-            </div>
-            <div className="flex items-center gap-2 justify-end sm:justify-start">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                onClick={handleRefresh}
-                disabled={isSyncing}
-                className="shrink-0"
-              >
-                <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button variant="outline" size="icon" className="shrink-0">
-                <Archive className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" size="icon" className="shrink-0">
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="flex items-center gap-2 justify-end pb-4">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={handleRefresh}
+              disabled={isSyncing}
+              className="shrink-0"
+            >
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+            </Button>
+            <Button variant="outline" size="icon" className="shrink-0">
+              <Archive className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="shrink-0">
+              <Trash2 className="h-4 w-4" />
+            </Button>
           </div>
 
           {data?.messages?.length === 0 ? (

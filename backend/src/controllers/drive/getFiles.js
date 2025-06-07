@@ -33,21 +33,67 @@ export const getFilesController = (googleOAuth, prisma) => async (req, res) => {
       whereClause.mimeType = { contains: 'pdf' };
     }
     
-    // Add search logic if provided
+    // Get paginated results from database (handle search with raw SQL for SQLite compatibility)
+    let files, total;
+    
     if (search) {
-      whereClause.name = { contains: search, mode: 'insensitive' };
+      // For search queries, use raw SQL to support case-insensitive search in SQLite
+      const searchPattern = `%${search.toLowerCase()}%`;
+      const baseWhereConditions = [];
+      const baseParams = [];
+      
+      // Add base conditions
+      baseWhereConditions.push('userId = ?');
+      baseParams.push(userId);
+      
+      // Add filter conditions if any
+      if (filter === 'documents') {
+        baseWhereConditions.push('mimeType LIKE ?');
+        baseParams.push('%document%');
+      } else if (filter === 'spreadsheets') {
+        baseWhereConditions.push('mimeType LIKE ?');
+        baseParams.push('%spreadsheet%');
+      } else if (filter === 'presentations') {
+        baseWhereConditions.push('mimeType LIKE ?');
+        baseParams.push('%presentation%');
+      } else if (filter === 'pdfs') {
+        baseWhereConditions.push('mimeType LIKE ?');
+        baseParams.push('%pdf%');
+      }
+      
+      const baseWhere = baseWhereConditions.join(' AND ');
+      
+      // Build search query with case-insensitive LIKE
+      const searchQuery = `
+        SELECT * FROM "File" 
+        WHERE ${baseWhere} AND LOWER(name) LIKE ?
+        ORDER BY modifiedAt DESC
+        LIMIT ? OFFSET ?
+      `;
+      
+      const countQuery = `
+        SELECT COUNT(*) as count FROM "File" 
+        WHERE ${baseWhere} AND LOWER(name) LIKE ?
+      `;
+      
+      const searchParams = [...baseParams, searchPattern];
+      
+      [files, total] = await Promise.all([
+        prisma.$queryRawUnsafe(searchQuery, ...searchParams, pagination.limit, pagination.skip),
+        prisma.$queryRawUnsafe(countQuery, ...searchParams).then(result => Number(result[0].count))
+      ]);
+    } else {
+      // For non-search queries, use regular Prisma queries
+      [files, total] = await Promise.all([
+        prisma.file.findMany({
+          where: whereClause,
+          skip: pagination.skip,
+          take: pagination.limit,
+          orderBy: { modifiedAt: 'desc' }
+        }),
+        prisma.file.count({ where: whereClause })
+      ]);
     }
-
-    // Get paginated results from database
-    const [files, total] = await Promise.all([
-      prisma.file.findMany({
-        where: whereClause,
-        skip: pagination.skip,
-        take: pagination.limit,
-        orderBy: { modifiedAt: 'desc' }
-      }),
-      prisma.file.count({ where: whereClause })
-    ]);
 
     // Calculate pagination metadata
     const paginationMeta = getPaginationMeta(total, pagination.page, pagination.limit);

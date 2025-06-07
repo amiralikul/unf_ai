@@ -36,25 +36,66 @@ export const getMessagesController = (googleOAuth, prisma) => async (req, res) =
       whereClause.isImportant = true;
     }
     
-    // Add search logic if provided
+    // Get paginated results from database (handle search with raw SQL for SQLite compatibility)
+    let messages, total;
+    
     if (search) {
-      whereClause.OR = [
-        { subject: { contains: search, mode: 'insensitive' } },
-        { body: { contains: search, mode: 'insensitive' } },
-        { sender: { contains: search, mode: 'insensitive' } }
-      ];
+      // For search queries, use raw SQL to support case-insensitive search in SQLite
+      const searchPattern = `%${search.toLowerCase()}%`;
+      const baseWhereConditions = [];
+      const baseParams = [];
+      
+      // Add base conditions
+      baseWhereConditions.push('userId = ?');
+      baseParams.push(userId);
+      
+      // Add filter conditions if any
+      if (filter === 'recent') {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        baseWhereConditions.push('receivedAt >= ?');
+        baseParams.push(sevenDaysAgo.toISOString());
+      } else if (filter === 'unread') {
+        baseWhereConditions.push('isRead = ?');
+        baseParams.push(false);
+      } else if (filter === 'important') {
+        baseWhereConditions.push('isImportant = ?');
+        baseParams.push(true);
+      }
+      
+      const baseWhere = baseWhereConditions.join(' AND ');
+      
+      // Build search query with case-insensitive LIKE
+      const searchQuery = `
+        SELECT * FROM "Email" 
+        WHERE ${baseWhere} AND (LOWER(subject) LIKE ? OR LOWER(COALESCE(body, '')) LIKE ? OR LOWER(sender) LIKE ?)
+        ORDER BY receivedAt DESC
+        LIMIT ? OFFSET ?
+      `;
+      
+      const countQuery = `
+        SELECT COUNT(*) as count FROM "Email" 
+        WHERE ${baseWhere} AND (LOWER(subject) LIKE ? OR LOWER(COALESCE(body, '')) LIKE ? OR LOWER(sender) LIKE ?)
+      `;
+      
+      const searchParams = [...baseParams, searchPattern, searchPattern, searchPattern];
+      
+      [messages, total] = await Promise.all([
+        prisma.$queryRawUnsafe(searchQuery, ...searchParams, pagination.limit, pagination.skip),
+        prisma.$queryRawUnsafe(countQuery, ...searchParams).then(result => Number(result[0].count))
+      ]);
+    } else {
+      // For non-search queries, use regular Prisma queries
+      [messages, total] = await Promise.all([
+        prisma.email.findMany({
+          where: whereClause,
+          skip: pagination.skip,
+          take: pagination.limit,
+          orderBy: { receivedAt: 'desc' }
+        }),
+        prisma.email.count({ where: whereClause })
+      ]);
     }
-
-    // Get paginated results from database
-    const [messages, total] = await Promise.all([
-      prisma.email.findMany({
-        where: whereClause,
-        skip: pagination.skip,
-        take: pagination.limit,
-        orderBy: { receivedAt: 'desc' }
-      }),
-      prisma.email.count({ where: whereClause })
-    ]);
 
     // Calculate pagination metadata
     const paginationMeta = getPaginationMeta(total, pagination.page, pagination.limit);

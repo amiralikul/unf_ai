@@ -112,6 +112,7 @@ export const api = {
     const searchParams = new URLSearchParams();
     if (params.page) searchParams.set('page', params.page.toString());
     if (params.limit) searchParams.set('limit', params.limit.toString());
+    if (params.search) searchParams.set('search', params.search);
     if (params.mimeType) searchParams.set('mimeType', params.mimeType);
     if (params.modifiedAfter) searchParams.set('modifiedAfter', params.modifiedAfter);
     if (params.modifiedBefore) searchParams.set('modifiedBefore', params.modifiedBefore);
@@ -131,7 +132,7 @@ export const api = {
     const searchParams = new URLSearchParams();
     if (params.page) searchParams.set('page', params.page.toString());
     if (params.limit) searchParams.set('limit', params.limit.toString());
-    if (params.query) searchParams.set('query', params.query);
+    if (params.search) searchParams.set('search', params.search);
     if (params.labelIds) searchParams.set('labelIds', JSON.stringify(params.labelIds));
     if (params.includeSpamTrash) searchParams.set('includeSpamTrash', params.includeSpamTrash.toString());
 
@@ -166,6 +167,7 @@ export const api = {
     if (params.page) searchParams.set('page', params.page.toString());
     if (params.limit) searchParams.set('limit', params.limit.toString());
     if (params.filter) searchParams.set('filter', params.filter);
+    if (params.search) searchParams.set('search', params.search);
 
     const url = `/api/trello/boards/${boardId}/cards${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     return apiClient.get(url);
