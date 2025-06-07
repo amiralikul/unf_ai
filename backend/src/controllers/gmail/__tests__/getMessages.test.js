@@ -18,7 +18,7 @@ describe('getMessages controller', () => {
   };
 
   const mockPrisma = {
-    message: {
+    email: {
       findMany: jest.fn(),
       count: jest.fn()
     }
@@ -37,40 +37,32 @@ describe('getMessages controller', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    mockPrisma.message.findMany.mockResolvedValue([
+    mockPrisma.email.findMany.mockResolvedValue([
       {
         id: 'db1',
-        gmailId: 'msg1',
+        googleId: 'msg1',
         subject: 'Test Email 1',
-        from: 'sender1@example.com',
-        to: 'recipient@example.com',
+        sender: 'sender1@example.com',
+        recipient: 'recipient@example.com',
         snippet: 'This is a test email',
         receivedAt: new Date('2025-06-01'),
         isRead: true,
-        isImportant: false,
-        labels: [
-          { id: 'label1', name: 'inbox' },
-          { id: 'label2', name: 'work' }
-        ]
+        isImportant: false
       },
       {
         id: 'db2',
-        gmailId: 'msg2',
+        googleId: 'msg2',
         subject: 'Test Email 2',
-        from: 'sender2@example.com',
-        to: 'recipient@example.com',
+        sender: 'sender2@example.com',
+        recipient: 'recipient@example.com',
         snippet: 'Another test email',
         receivedAt: new Date('2025-06-02'),
         isRead: false,
-        isImportant: true,
-        labels: [
-          { id: 'label1', name: 'inbox' },
-          { id: 'label3', name: 'important' }
-        ]
+        isImportant: true
       }
     ]);
     
-    mockPrisma.message.count.mockResolvedValue(2);
+    mockPrisma.email.count.mockResolvedValue(2);
   });
   
   test('should get messages successfully', async () => {
@@ -81,15 +73,14 @@ describe('getMessages controller', () => {
     await controller(req, res);
 
     // Verify dependencies were called correctly
-    expect(mockPrisma.message.findMany).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockPrisma.email.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: { userId: 'user123' },
       skip: 0,
       take: 10,
-      orderBy: { receivedAt: 'desc' },
-      include: { labels: true }
+      orderBy: { receivedAt: 'desc' }
     }));
 
-    expect(mockPrisma.message.count).toHaveBeenCalledWith({ where: { userId: 'user123' } });
+    expect(mockPrisma.email.count).toHaveBeenCalledWith({ where: { userId: 'user123' } });
 
     // Verify response
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
@@ -98,13 +89,11 @@ describe('getMessages controller', () => {
         messages: expect.arrayContaining([
           expect.objectContaining({
             id: 'msg1',
-            subject: 'Test Email 1',
-            labelNames: ['inbox', 'work']
+            subject: 'Test Email 1'
           }),
           expect.objectContaining({
             id: 'msg2',
-            subject: 'Test Email 2',
-            labelNames: ['inbox', 'important']
+            subject: 'Test Email 2'
           })
         ])
       }),
@@ -135,14 +124,14 @@ describe('getMessages controller', () => {
     await controller(reqWithFilters, res);
     
     // Verify filters were applied correctly
-    expect(mockPrisma.message.findMany).toHaveBeenCalledWith(expect.objectContaining({
+    expect(mockPrisma.email.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
         userId: 'user123',
         isRead: false,
         OR: [
           { subject: { contains: 'important', mode: 'insensitive' } },
-          { snippet: { contains: 'important', mode: 'insensitive' } },
-          { from: { contains: 'important', mode: 'insensitive' } }
+          { body: { contains: 'important', mode: 'insensitive' } },
+          { sender: { contains: 'important', mode: 'insensitive' } }
         ]
       })
     }));
@@ -152,7 +141,7 @@ describe('getMessages controller', () => {
     // Set up database error
     const dbError = new Error('Database connection failed');
     dbError.code = 'P2002'; // Prisma error code
-    mockPrisma.message.findMany.mockRejectedValue(dbError);
+    mockPrisma.email.findMany.mockRejectedValue(dbError);
     
     // Create controller with mocked dependencies
     const controller = getMessagesController(mockGoogleOAuth, mockPrisma);

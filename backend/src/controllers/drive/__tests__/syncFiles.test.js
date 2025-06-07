@@ -13,17 +13,14 @@ import { syncFilesController } from '../syncFiles.js';
 
 describe('syncFiles controller', () => {
   // Mock dependencies
-  const mockDriveClient = {
-    files: {
-      list: jest.fn()
-    }
-  };
-  
   const mockGoogleOAuth = {
-    getDriveClient: jest.fn()
+    getDriveFiles: jest.fn()
   };
   
   const mockPrisma = {
+    user: {
+      findUnique: jest.fn()
+    },
     file: {
       findUnique: jest.fn(),
       upsert: jest.fn()
@@ -44,24 +41,22 @@ describe('syncFiles controller', () => {
     jest.clearAllMocks();
     
     // Set up mock return values
-    mockGoogleOAuth.getDriveClient.mockResolvedValue(mockDriveClient);
-    
-    mockDriveClient.files.list.mockResolvedValue({
-      data: {
-        files: [
-          {
-            id: 'file1',
-            name: 'Test File',
-            mimeType: 'application/pdf',
-            size: '1024',
-            modifiedTime: '2025-06-06T12:00:00Z',
-            webViewLink: 'https://drive.google.com/file1',
-            iconLink: 'https://drive.google.com/icon1',
-            thumbnailLink: 'https://drive.google.com/thumbnail1'
-          }
-        ]
-      }
+    mockPrisma.user.findUnique.mockResolvedValue({
+      googleAccessToken: 'access_token',
+      googleRefreshToken: 'refresh_token'
     });
+    
+    mockGoogleOAuth.getDriveFiles.mockResolvedValue([
+      {
+        id: 'file1',
+        name: 'Test File',
+        mimeType: 'application/pdf',
+        size: '1024',
+        modifiedTime: '2025-06-06T12:00:00Z',
+        webViewLink: 'https://drive.google.com/file1',
+        owners: [{ emailAddress: 'user@example.com' }]
+      }
+    ]);
     
     mockPrisma.file.findUnique.mockResolvedValue(null); // File doesn't exist yet
     
@@ -81,20 +76,26 @@ describe('syncFiles controller', () => {
     await controller(req, res);
     
     // Verify dependencies were called correctly
-    expect(mockGoogleOAuth.getDriveClient).toHaveBeenCalledWith('user123');
+    expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+      where: { id: 'user123' },
+      select: {
+        googleAccessToken: true,
+        googleRefreshToken: true
+      }
+    });
     
-    expect(mockDriveClient.files.list).toHaveBeenCalledWith(expect.objectContaining({
-      pageSize: 100,
-      fields: expect.any(String),
-      orderBy: 'modifiedTime desc'
-    }));
+    expect(mockGoogleOAuth.getDriveFiles).toHaveBeenCalledWith({
+      access_token: 'access_token',
+      refresh_token: 'refresh_token'
+    }, 100);
     
     expect(mockPrisma.file.upsert).toHaveBeenCalledWith(expect.objectContaining({
       where: { googleId: 'file1' },
       create: expect.objectContaining({
         googleId: 'file1',
         name: 'Test File',
-        userId: 'user123'
+        userId: 'user123',
+        owners: expect.any(String)
       })
     }));
     
@@ -113,8 +114,8 @@ describe('syncFiles controller', () => {
   });
   
   test('should handle authentication errors', async () => {
-    // Set up authentication error
-    mockGoogleOAuth.getDriveClient.mockResolvedValue(null);
+    // Set up authentication error - no user found
+    mockPrisma.user.findUnique.mockResolvedValue(null);
     
     // Create controller with mocked dependencies
     const controller = syncFilesController(mockGoogleOAuth, mockPrisma);
@@ -135,7 +136,7 @@ describe('syncFiles controller', () => {
   
   test('should handle Google Drive API errors', async () => {
     // Set up API error
-    mockDriveClient.files.list.mockRejectedValue(new Error('API connection failed'));
+    mockGoogleOAuth.getDriveFiles.mockRejectedValue(new Error('API connection failed'));
     
     // Create controller with mocked dependencies
     const controller = syncFilesController(mockGoogleOAuth, mockPrisma);
@@ -150,6 +151,30 @@ describe('syncFiles controller', () => {
     expect(next).toHaveBeenCalledWith(expect.objectContaining({
       name: 'ExternalServiceError',
       message: expect.stringContaining('API connection failed')
+    }));
+  });
+  
+  test('should handle missing tokens', async () => {
+    // Set up user without tokens
+    mockPrisma.user.findUnique.mockResolvedValue({
+      googleAccessToken: null,
+      googleRefreshToken: null
+    });
+    
+    // Create controller with mocked dependencies
+    const controller = syncFilesController(mockGoogleOAuth, mockPrisma);
+    
+    // Mock the error handling
+    const next = jest.fn();
+    
+    // Call the controller with next function for error handling
+    await controller(req, { json: res.json }, next).catch(next);
+    
+    // Verify error was thrown
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({
+      name: 'AuthenticationError',
+      message: 'Google Drive authentication required',
+      code: 'GOOGLE_AUTH_REQUIRED'
     }));
   });
 });

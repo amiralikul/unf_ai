@@ -16,23 +16,39 @@ export const syncFilesController = (googleOAuth, prisma) => async (req, res) => 
   const userId = req.user.userId;
 
   try {
-    // Get Google Drive client
-    const driveClient = await googleOAuth.getDriveClient(userId);
+    // Get user tokens from database
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { 
+        googleAccessToken: true,
+        googleRefreshToken: true
+      }
+    });
     
-    if (!driveClient) {
+    if (!user || !user.googleAccessToken) {
       throw new AuthenticationError('Google Drive authentication required', 'GOOGLE_AUTH_REQUIRED');
     }
+    
+    // Create tokens object
+    const tokens = {
+      access_token: user.googleAccessToken,
+      refresh_token: user.googleRefreshToken
+    };
 
-    // Fetch files from Google Drive
+    // Fetch files from Google Drive using the service
     let driveFiles;
     try {
-      const response = await driveClient.files.list({
-        pageSize: 100,
-        fields: 'files(id, name, mimeType, size, modifiedTime, webViewLink, iconLink, thumbnailLink)',
-        orderBy: 'modifiedTime desc'
-      });
+      // Use the existing getDriveFiles method with a higher limit
+      driveFiles = await googleOAuth.getDriveFiles(tokens, 100);
       
-      driveFiles = response.data.files || [];
+      if (!driveFiles || driveFiles.length === 0) {
+        // Return early if no files found
+        return sendSuccess(res, {
+          message: 'No Google Drive files found to synchronize',
+          stats: { total: 0, created: 0, updated: 0, failed: 0 },
+          timestamp: new Date().toISOString()
+        });
+      }
     } catch (error) {
       throw new ExternalServiceError('Google Drive', error.message, error);
     }
@@ -63,8 +79,7 @@ export const syncFilesController = (googleOAuth, prisma) => async (req, res) => 
               size: parseInt(file.size) || 0,
               modifiedAt: new Date(file.modifiedTime),
               webViewLink: file.webViewLink,
-              iconLink: file.iconLink,
-              thumbnailLink: file.thumbnailLink
+              owners: JSON.stringify(file.owners || [])
             },
             create: {
               googleId: file.id,
@@ -73,8 +88,7 @@ export const syncFilesController = (googleOAuth, prisma) => async (req, res) => 
               size: parseInt(file.size) || 0,
               modifiedAt: new Date(file.modifiedTime),
               webViewLink: file.webViewLink,
-              iconLink: file.iconLink,
-              thumbnailLink: file.thumbnailLink,
+              owners: JSON.stringify(file.owners || []),
               userId
             },
           });
