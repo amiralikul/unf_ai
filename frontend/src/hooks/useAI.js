@@ -51,43 +51,10 @@ export const useNLToSQL = () => {
   });
 };
 
-export const useLangChainNLToSQL = () => {
-  return useMutation({
-    mutationFn: (question) => api.queryLangChainNLToSQL(question),
-    onSuccess: (data) => {
-      console.log('LangChain NL-to-SQL Query successful:', data);
-    },
-    onError: (error) => {
-      console.error('LangChain NL-to-SQL Query failed:', error);
-    },
-  });
-};
-
-export const useCompareNLToSQL = () => {
-  return useMutation({
-    mutationFn: (question) => api.compareNLToSQL(question),
-    onSuccess: (data) => {
-      console.log('NL-to-SQL Comparison successful:', data);
-    },
-    onError: (error) => {
-      console.error('NL-to-SQL Comparison failed:', error);
-    },
-  });
-};
-
 export const useNLToSQLHealth = () => {
   return useQuery({
     queryKey: ['ai', 'nl-to-sql', 'health'],
     queryFn: api.getNLToSQLHealth,
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    refetchInterval: 30 * 1000, // 30 seconds
-  });
-};
-
-export const useLangChainNLToSQLHealth = () => {
-  return useQuery({
-    queryKey: ['ai', 'langchain', 'nl-to-sql', 'health'],
-    queryFn: api.getLangChainNLToSQLHealth,
     staleTime: 5 * 60 * 1000, // 5 minutes
     refetchInterval: 30 * 1000, // 30 seconds
   });

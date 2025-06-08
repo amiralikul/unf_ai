@@ -2,45 +2,32 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
   SendHorizontal,
   Settings,
-  Paperclip,
-  Smile,
   ChevronDown,
   Code,
-  GitCompare,
-  Zap,
-  Database,
-  CheckCircle,
-  XCircle,
-  AlertCircle
+  Zap
 } from "lucide-react"
-import { useNLToSQL, useLangChainNLToSQL, useCompareNLToSQL } from "@/hooks/useAI"
+import { useNLToSQL } from "@/hooks/useAI"
+import { useAutoScroll } from "@/hooks/useAutoScroll"
 
 export default function ChatView() {
   const [messages, setMessages] = useState([
     {
       id: "1",
-      content: "Hello! I can help you analyze your data using natural language queries. You can choose between different AI implementations or compare them side-by-side. Ask me questions like 'How many files do I have?' or 'Show me my recent emails'.",
+      content: "Hello! I can help you analyze your data using natural language queries powered by LangChain. Ask me questions like 'How many files do I have?' or 'Show me my recent emails'.",
       sender: "ai",
       timestamp: new Date(),
     },
   ])
   const [input, setInput] = useState("")
-  const [queryMethod, setQueryMethod] = useState("original") // "original", "langchain", "compare"
-
-  // Hooks for different implementations
   const nlToSQLMutation = useNLToSQL()
-  const langchainMutation = useLangChainNLToSQL()
-  const compareMutation = useCompareNLToSQL()
-
-  const isLoading = nlToSQLMutation.isPending || langchainMutation.isPending || compareMutation.isPending
+  const isLoading = nlToSQLMutation.isPending
+  const { scrollAreaRef, scrollTargetRef, scrollToBottom } = useAutoScroll(messages)
 
   const handleSendMessage = async () => {
     if (!input.trim()) return
@@ -51,7 +38,6 @@ export default function ChatView() {
       content: input,
       sender: "user",
       timestamp: new Date(),
-      queryMethod,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -59,58 +45,27 @@ export default function ChatView() {
     setInput("")
 
     try {
-      let response;
-      let aiMessage;
-
-      if (queryMethod === "compare") {
-        // Compare both implementations
-        response = await compareMutation.mutateAsync(currentInput)
-
-        aiMessage = {
-          id: Date.now().toString(),
-          content: "Here's a comparison of both implementations:",
-          sender: "ai",
-          timestamp: new Date(),
-          queryMethod: "compare",
-          comparisonData: response,
-        }
-      } else if (queryMethod === "langchain") {
-        // Use LangChain implementation
-        response = await langchainMutation.mutateAsync(currentInput)
-
-        aiMessage = {
-          id: Date.now().toString(),
-          content: response.answer,
-          sender: "ai",
-          timestamp: new Date(),
-          queryMethod: "langchain",
-          sqlInfo: response.sql,
-        }
-      } else {
-        // Use original implementation
-        response = await nlToSQLMutation.mutateAsync(currentInput)
-
-        aiMessage = {
-          id: Date.now().toString(),
-          content: response.answer,
-          sender: "ai",
-          timestamp: new Date(),
-          queryMethod: "original",
-          sqlInfo: response.sql,
-        }
+      // Call the NL-to-SQL API (now powered by LangChain)
+      const response = await nlToSQLMutation.mutateAsync(currentInput)
+      
+      const aiMessage = {
+        id: Date.now().toString(),
+        content: response.answer,
+        sender: "ai",
+        timestamp: new Date(),
+        sqlInfo: response.sql, // Store SQL info for debugging/display
       }
 
       setMessages((prev) => [...prev, aiMessage])
     } catch (error) {
       console.error('Failed to process query:', error)
-
+      
       const errorMessage = {
         id: Date.now().toString(),
         content: `Sorry, I encountered an error: ${error.response?.data?.message || error.message || 'Failed to process your query'}. Please try again.`,
         sender: "ai",
         timestamp: new Date(),
         isError: true,
-        queryMethod,
       }
 
       setMessages((prev) => [...prev, errorMessage])
@@ -124,20 +79,8 @@ export default function ChatView() {
     }
   }
 
-  // Helper function to get method badge
-  const getMethodBadge = (method) => {
-    switch (method) {
-      case "langchain":
-        return <Badge variant="secondary" className="ml-2"><Zap className="h-3 w-3 mr-1" />LangChain</Badge>
-      case "compare":
-        return <Badge variant="outline" className="ml-2"><GitCompare className="h-3 w-3 mr-1" />Compare</Badge>
-      default:
-        return <Badge variant="default" className="ml-2"><Database className="h-3 w-3 mr-1" />Original</Badge>
-    }
-  }
-
   // Helper function to render SQL info
-  const renderSQLInfo = (sqlInfo, method) => {
+  const renderSQLInfo = (sqlInfo) => {
     if (!sqlInfo) return null
 
     return (
@@ -163,7 +106,10 @@ export default function ChatView() {
             </div>
             <div className="flex items-center gap-4 text-muted-foreground">
               <span>Results: {sqlInfo.resultCount}</span>
-              {method && <span>Method: {method}</span>}
+              <span className="flex items-center gap-1">
+                <Zap className="h-3 w-3" />
+                Powered by LangChain
+              </span>
             </div>
           </div>
         </CollapsibleContent>
@@ -171,148 +117,25 @@ export default function ChatView() {
     )
   }
 
-  // Helper function to render comparison data
-  const renderComparisonData = (comparisonData) => {
-    if (!comparisonData) return null
-
-    const { original, langchain, comparison } = comparisonData
-
-    return (
-      <div className="mt-3 space-y-3">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Original Implementation */}
-          <div className={`rounded border p-3 ${original?.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <Database className="h-4 w-4" />
-              <span className="font-medium text-sm">Original</span>
-              {original?.success ?
-                <CheckCircle className="h-4 w-4 text-green-600" /> :
-                <XCircle className="h-4 w-4 text-red-600" />
-              }
-            </div>
-            {original?.success ? (
-              <div className="space-y-2 text-xs">
-                <p><strong>Answer:</strong> {original.response}</p>
-                <p><strong>Results:</strong> {original.resultCount}</p>
-                <code className="block rounded bg-background p-2 font-mono">
-                  {original.sql}
-                </code>
-              </div>
-            ) : (
-              <p className="text-red-600 text-xs">{original?.error}</p>
-            )}
-          </div>
-
-          {/* LangChain Implementation */}
-          <div className={`rounded border p-3 ${langchain?.success ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'}`}>
-            <div className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4" />
-              <span className="font-medium text-sm">LangChain</span>
-              {langchain?.success ?
-                <CheckCircle className="h-4 w-4 text-green-600" /> :
-                <XCircle className="h-4 w-4 text-red-600" />
-              }
-            </div>
-            {langchain?.success ? (
-              <div className="space-y-2 text-xs">
-                <p><strong>Answer:</strong> {langchain.response}</p>
-                <p><strong>Results:</strong> {langchain.resultCount}</p>
-                <code className="block rounded bg-background p-2 font-mono">
-                  {langchain.sql}
-                </code>
-              </div>
-            ) : (
-              <p className="text-red-600 text-xs">{langchain?.error}</p>
-            )}
-          </div>
-        </div>
-
-        {/* Comparison Summary */}
-        {comparison && (
-          <div className="rounded border border-blue-200 bg-blue-50 p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <GitCompare className="h-4 w-4" />
-              <span className="font-medium text-sm">Comparison Summary</span>
-            </div>
-            <div className="space-y-1 text-xs">
-              <div className="flex items-center gap-2">
-                <span>Both Successful:</span>
-                {comparison.bothSuccessful ?
-                  <CheckCircle className="h-3 w-3 text-green-600" /> :
-                  <XCircle className="h-3 w-3 text-red-600" />
-                }
-              </div>
-              {comparison.bothSuccessful && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span>SQL Similarity:</span>
-                    {comparison.sqlSimilarity ?
-                      <CheckCircle className="h-3 w-3 text-green-600" /> :
-                      <AlertCircle className="h-3 w-3 text-yellow-600" />
-                    }
-                    <span className="text-muted-foreground">
-                      {comparison.sqlSimilarity ? 'Identical' : 'Different approaches'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>Result Count:</span>
-                    {comparison.resultCountMatch ?
-                      <CheckCircle className="h-3 w-3 text-green-600" /> :
-                      <AlertCircle className="h-3 w-3 text-yellow-600" />
-                    }
-                    <span className="text-muted-foreground">
-                      {comparison.resultCountMatch ? 'Same count' : 'Different counts'}
-                    </span>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
-    )
-  }
-
   return (
-    <div className="p-6">
-      <Card className="flex h-[calc(100vh-120px)] flex-col">
+    <div className="p-6 pb-60">
+      <Card className="flex h-[calc(100vh-350px)] flex-col">
         <CardHeader className="pb-2">
           <div className="flex flex-row items-center justify-between">
-            <CardTitle>AI Chat Assistant</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              AI Chat Assistant
+              <span className="flex items-center gap-1 text-sm font-normal text-muted-foreground">
+                <Zap className="h-4 w-4" />
+                Powered by LangChain
+              </span>
+            </CardTitle>
             <Button variant="ghost" size="icon">
               <Settings className="h-4 w-4" />
             </Button>
           </div>
-
-          {/* Method Selector */}
-          <div className="mt-3">
-            <Tabs value={queryMethod} onValueChange={setQueryMethod} className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="original" className="text-xs">
-                  <Database className="h-3 w-3 mr-1" />
-                  Original
-                </TabsTrigger>
-                <TabsTrigger value="langchain" className="text-xs">
-                  <Zap className="h-3 w-3 mr-1" />
-                  LangChain
-                </TabsTrigger>
-                <TabsTrigger value="compare" className="text-xs">
-                  <GitCompare className="h-3 w-3 mr-1" />
-                  Compare
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            {/* Method Description */}
-            <div className="mt-2 text-xs text-muted-foreground">
-              {queryMethod === "original" && "Uses the original OpenAI-based implementation"}
-              {queryMethod === "langchain" && "Uses the advanced LangChain implementation with better prompt engineering"}
-              {queryMethod === "compare" && "Compares both implementations side-by-side"}
-            </div>
-          </div>
         </CardHeader>
         <CardContent className="flex-1 p-0">
-          <ScrollArea className="h-[calc(100vh-320px)] px-4">
+          <ScrollArea ref={scrollAreaRef} className="h-[calc(100vh-450px)] px-4">
             <div className="space-y-4 pt-4">
               {messages.map((message) => (
                 <div
@@ -333,11 +156,7 @@ export default function ChatView() {
                       </Avatar>
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm">{message.content}</p>
-                        {message.queryMethod && getMethodBadge(message.queryMethod)}
-                      </div>
-
+                      <p className="text-sm">{message.content}</p>
                       <p className="mt-1 text-xs opacity-70">
                         {message.timestamp.toLocaleTimeString([], {
                           hour: "2-digit",
@@ -345,11 +164,8 @@ export default function ChatView() {
                         })}
                       </p>
 
-                      {/* Render SQL info for single method responses */}
-                      {message.sqlInfo && renderSQLInfo(message.sqlInfo, message.queryMethod)}
-
-                      {/* Render comparison data */}
-                      {message.comparisonData && renderComparisonData(message.comparisonData)}
+                      {/* Render SQL info */}
+                      {message.sqlInfo && renderSQLInfo(message.sqlInfo)}
                     </div>
                     {message.sender === "user" && (
                       <Avatar className="h-8 w-8 shrink-0">
@@ -378,10 +194,18 @@ export default function ChatView() {
                   </div>
                 </div>
               )}
+              
+              {/* Invisible element to scroll to */}
+              <div ref={scrollTargetRef} />
             </div>
           </ScrollArea>
-          <div className="border-t p-4">
-            {/* Sample Questions */}
+          
+        </CardContent>
+        
+      </Card>
+      <Card className="mb-6 absolute bottom-0 left-6 right-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t shadow-lg">
+      <CardContent className="p-4 flex-col">
+          <div className="w-full space-y-3">
             <div className="mb-3">
               <p className="text-xs text-muted-foreground mb-2">Try these sample questions:</p>
               <div className="flex flex-wrap gap-1">
@@ -389,7 +213,9 @@ export default function ChatView() {
                   "How many files do I have?",
                   "Show me my recent emails",
                   "What are my Trello cards?",
-                  "Count my files by type"
+                  "Count my files by type",
+                  "Which emails are unread?",
+                  "Show me overdue tasks"
                 ].map((sample, index) => (
                   <Button
                     key={index}
@@ -405,40 +231,34 @@ export default function ChatView() {
               </div>
             </div>
 
-            <div className="flex gap-2">
-              <Button variant="outline" size="icon" className="shrink-0">
-                <Paperclip className="h-4 w-4" />
-              </Button>
-              <Textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={`Ask a question using ${queryMethod === 'compare' ? 'comparison mode' : queryMethod === 'langchain' ? 'LangChain' : 'original'} method...`}
-                className="min-h-[60px] flex-1 resize-none"
-                disabled={isLoading} />
-              <div className="flex flex-col gap-2">
-                <Button variant="outline" size="icon" className="shrink-0">
-                  <Smile className="h-4 w-4" />
-                </Button>
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!input.trim() || isLoading}
-                  className="shrink-0">
-                  {isLoading ? (
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
-                  ) : (
-                    <SendHorizontal className="h-4 w-4" />
-                  )}
-                  <span className="sr-only">Send message</span>
-                </Button>
+            <div className="flex gap-2 w-full items-end">
+              <div className="flex-1 min-w-0">
+                <Textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask a question about your data..."
+                  className="min-h-[60px] w-full resize-none"
+                  disabled={isLoading} />
               </div>
+              <Button
+                onClick={handleSendMessage}
+                disabled={!input.trim() || isLoading}
+                className="shrink-0">
+                {isLoading ? (
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
+                ) : (
+                  <SendHorizontal className="h-4 w-4" />
+                )}
+                <span className="sr-only">Send message</span>
+              </Button>
             </div>
 
-            {/* Current method indicator */}
+            {/* Status indicator */}
             <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
               <div className="flex items-center gap-1">
-                <span>Using:</span>
-                {getMethodBadge(queryMethod)}
+                <Zap className="h-3 w-3" />
+                <span>LangChain-powered AI assistant</span>
               </div>
               {isLoading && (
                 <span className="flex items-center gap-1">

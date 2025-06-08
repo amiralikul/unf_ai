@@ -195,22 +195,11 @@ export const api = {
   },
   getAIStats: () => apiClient.get('/api/ai/stats'),
   
-  // NL to SQL queries
+  // NL to SQL queries (powered by LangChain)
   queryNLToSQL: (question) => {
     return apiClient.post('/api/ai/nl-to-sql', { question });
   },
   getNLToSQLHealth: () => apiClient.get('/api/ai/nl-to-sql/health'),
-
-  // LangChain NL to SQL queries
-  queryLangChainNLToSQL: (question) => {
-    return apiClient.post('/api/ai/langchain/nl-to-sql', { question });
-  },
-  getLangChainNLToSQLHealth: () => apiClient.get('/api/ai/langchain/nl-to-sql/health'),
-
-  // Compare NL to SQL implementations
-  compareNLToSQL: (question) => {
-    return apiClient.post('/api/ai/compare/nl-to-sql', { question });
-  },
 };
 
 export default apiClient;

@@ -70,7 +70,6 @@ export function AppSidebar({ activeView }) {
           <p className="text-xs text-muted-foreground">{user?.email || 'user@example.com'}</p>
         </div>
       </SidebarHeader>
-    
       <SidebarContent>
         <SidebarMenu>
           {menuItems.map((item) => (
