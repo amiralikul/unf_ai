@@ -4,6 +4,7 @@ import {
   ExternalServiceError, 
   DatabaseError
 } from '../../utils/errors.js';
+import { LinkDetectionService } from '../../services/LinkDetectionService.js';
 
 /**
  * Sync Trello boards and cards from the API
@@ -14,6 +15,7 @@ import {
  */
 export const syncBoardsController = (trelloService, prisma) => async (req, res) => {
   const userId = req.user.userId;
+  const linkDetectionService = new LinkDetectionService(prisma);
 
   try {
     // Get Trello credentials from user profile
@@ -56,7 +58,8 @@ export const syncBoardsController = (trelloService, prisma) => async (req, res) 
     const syncResults = await prisma.$transaction(async (tx) => {
       const results = {
         boards: { created: 0, updated: 0, failed: 0, total: trelloBoards.length },
-        cards: { created: 0, updated: 0, failed: 0, total: 0 }
+        cards: { created: 0, updated: 0, failed: 0, total: 0 },
+        linksCreated: 0
       };
       
       for (const board of trelloBoards) {
@@ -88,7 +91,7 @@ export const syncBoardsController = (trelloService, prisma) => async (req, res) 
             try {
               const existingCard = await tx.trelloCard.findUnique({ where: { trello_id: card.id } });
               
-              await tx.trelloCard.upsert({
+              const savedCard = await tx.trelloCard.upsert({
                 where: { trello_id: card.id },
                 update: {
                   name: card.name,
@@ -116,6 +119,19 @@ export const syncBoardsController = (trelloService, prisma) => async (req, res) 
                   user_id: userId,
                 },
               });
+
+              // Detect file and email references in card content
+              try {
+                const cardText = `${card.name} ${card.desc || ''}`;
+                const linkResults = await linkDetectionService.processCardText(savedCard.id, cardText, userId);
+                results.linksCreated += linkResults.fileLinks.length;
+                
+                if (linkResults.errors.length > 0) {
+                  console.warn(`Link detection errors for card ${savedCard.id}:`, linkResults.errors);
+                }
+              } catch (linkError) {
+                console.warn(`Failed to detect links for card ${savedCard.id}:`, linkError.message);
+              }
 
               if (existingCard) results.cards.updated++;
               else results.cards.created++;

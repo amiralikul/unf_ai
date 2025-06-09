@@ -19,6 +19,8 @@ import {
 import { useTrelloBoards, useSyncTrelloData } from "@/hooks/useTrelloBoards"
 import { useTrelloCardsWithPagination, useSyncTrelloCards } from "@/hooks/useTrelloCards"
 import { usePagination } from "@/hooks/usePagination"
+import { useAuth } from "@/hooks/useAuth"
+import { TrelloCredentialsSetup } from "./TrelloCredentialsSetup"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
 
 const getStatusBadge = (status, listName) => {
@@ -67,6 +69,7 @@ const formatDate = (dateString) => {
 export default function TrelloView() {
   const [selectedBoardId, setSelectedBoardId] = useState(null)
   const [statusFilter, setStatusFilter] = useState("all")
+  const { user } = useAuth()
   
   // Initialize pagination hook
   const paginationHook = usePagination({
@@ -76,11 +79,15 @@ export default function TrelloView() {
     totalPages: null
   })
   
+  // Check if user has Trello credentials configured
+  const hasTrelloCredentials = user?.hasTrelloCredentials
+  
   // Fetch boards to get available options  
   const { 
     data: boardsData, 
     isLoading: isBoardsLoading, 
-    isError: isBoardsError 
+    isError: isBoardsError,
+    error: boardsError 
   } = useTrelloBoards()
   
   // Fetch cards for selected board
@@ -127,6 +134,21 @@ export default function TrelloView() {
       syncBoards()
     }
   }
+
+  // Handle successful credentials setup
+  const handleCredentialsSuccess = () => {
+    // Credentials have been saved, the user data will be refreshed automatically
+    // and hasTrelloCredentials will become true, hiding the setup component
+  }
+  
+  // Show credentials setup if user hasn't configured Trello API credentials
+  if (!hasTrelloCredentials) {
+    return (
+      <div className="p-4 md:p-6 w-full max-w-full">
+        <TrelloCredentialsSetup onSuccess={handleCredentialsSuccess} />
+      </div>
+    )
+  }
   
   // Get cards and derived data
   const cards = cardsData?.cards || []
@@ -166,8 +188,15 @@ export default function TrelloView() {
     return <TrelloViewSkeleton />
   }
   
-  // Error state for boards
+  // Error state for boards - check if it's a credentials error
   if (isBoardsError) {
+    if (boardsError?.code === 'TRELLO_AUTH_REQUIRED') {
+      return (
+        <div className="p-4 md:p-6 w-full max-w-full">
+          <TrelloCredentialsSetup onSuccess={handleCredentialsSuccess} />
+        </div>
+      )
+    }
     return <TrelloErrorState message="Failed to load Trello boards" onRetry={handleRefresh} />
   }
   

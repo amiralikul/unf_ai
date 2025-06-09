@@ -265,28 +265,14 @@ export default function ChatView() {
               <p className="text-xs text-muted-foreground mb-2">Try these sample questions:</p>
               <div className="flex flex-wrap gap-1">
                 {[
-                  // "How many files do I have?",
-                  // "Show me my recent emails",
-                  // "What are my Trello cards?",
-                  // "Count my files by type",
-                  // "Which emails are unread?",
-                  // "Show me overdue tasks",
-
                   "Who owns the most files?",
                   "Which file was modified most recently?",
                   "What is the distribution of files by their last modified date?",
-
-                  "How many Google Docs do I have?",
-                  "Show me my shared Google Sheets",
-                  "Which Google Docs were referenced in emails?",
-
                   "Which files have been shared via email but not modified recently?",
                   "Who sends the most file-related emails?",
                   "Which Trello cards are linked to recently modified files?",
-
-                  "What percentage of my files are Google Docs vs regular files?",
-                  "Show me Google Docs that are shared with others",
-                  "Which Google Docs have been mentioned in recent emails?",
+                  "What percentage of tasks have corresponding documents?",
+                  "Are there overdue tasks with active email conversations?",
                 ].map((sample, index) => (
                   <Button
                     key={index}

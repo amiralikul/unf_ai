@@ -40,6 +40,7 @@ model File {
   is_shared      Boolean? @default(false)
   user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   emails        EmailFileLink[]
+  card_links    TrelloCardFileLink[]
 
   @@index([user_id])
   @@index([modified_at])
@@ -69,6 +70,7 @@ model Email {
   user_id          String
   user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   attachments     EmailFileLink[]
+  card_links      TrelloCardEmailLink[]
 
   @@index([user_id])
   @@index([received_at])
@@ -122,6 +124,8 @@ model TrelloCard {
   user_id      String
   board       TrelloBoard @relation(fields: [board_id], references: [id], onDelete: Cascade)
   user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  file_links  TrelloCardFileLink[]
+  email_links TrelloCardEmailLink[]
 
   @@index([board_id])
   @@index([user_id])
@@ -149,4 +153,40 @@ model Session {
   @@index([user_id])
   @@index([expires_at])
   @@map("Session")
+}
+
+model TrelloCardFileLink {
+  id         String   @id @default(cuid())
+  card_id    String
+  file_id    String
+  link_type  String   // 'attachment', 'reference', 'requirement', 'deliverable'
+  created_at DateTime @default(now())
+  created_by String?  // 'auto' or user_id for manual links
+  
+  card TrelloCard @relation(fields: [card_id], references: [id], onDelete: Cascade)
+  file File       @relation(fields: [file_id], references: [id], onDelete: Cascade)
+  
+  @@unique([card_id, file_id])
+  @@index([card_id])
+  @@index([file_id])
+  @@index([link_type])
+  @@map("TrelloCardFileLink")
+}
+
+model TrelloCardEmailLink {
+  id         String   @id @default(cuid())
+  card_id    String
+  email_id   String
+  link_type  String   // 'discussion', 'update', 'notification', 'attachment'
+  created_at DateTime @default(now())
+  created_by String?  // 'auto' or user_id for manual links
+  
+  card  TrelloCard @relation(fields: [card_id], references: [id], onDelete: Cascade)
+  email Email      @relation(fields: [email_id], references: [id], onDelete: Cascade)
+  
+  @@unique([card_id, email_id])
+  @@index([card_id])
+  @@index([email_id])
+  @@index([link_type])
+  @@map("TrelloCardEmailLink")
 }

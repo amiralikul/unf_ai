@@ -66,7 +66,7 @@ CRITICAL SECURITY RULES:
 1. ALWAYS include "WHERE "user_id" = '{userId}'" for user data isolation
 2. NEVER use DROP, DELETE, INSERT, UPDATE, ALTER, CREATE, TRUNCATE operations
 3. Use LIMIT to prevent large result sets (max 1000 rows)
-4. Only query the allowed tables: "User", "File", "Email", "TrelloBoard", "TrelloCard", "Session", "EmailFileLink"
+4. Only query the allowed tables: "User", "File", "Email", "TrelloBoard", "TrelloCard", "Session", "EmailFileLink", "TrelloCardFileLink", "TrelloCardEmailLink"
 5. Use PostgreSQL-specific functions and syntax when appropriate
 
 SCHEMA AND QUERYING RULES:
@@ -92,6 +92,22 @@ SPECIAL INSTRUCTIONS FOR JOINING EMAILS AND FILES:
   JOIN "EmailFileLink" efl ON f.id = efl.file_id
   JOIN "Email" e ON efl.email_id = e.id
   WHERE e.subject = 'Important' AND e.user_id = '{userId}';
+
+SPECIAL INSTRUCTIONS FOR TRELLO CARD RELATIONSHIPS:
+- The "TrelloCardFileLink" table links Trello cards to files. Use it to find which files are referenced in which cards.
+- The "TrelloCardEmailLink" table links Trello cards to emails. Use it to find which emails are related to which cards.
+- Example: To find recently modified files linked to Trello cards, you would write:
+  SELECT tc.name as card_name, f.name as file_name, f."modified_at"
+  FROM "TrelloCard" tc
+  JOIN "TrelloCardFileLink" tcfl ON tc.id = tcfl.card_id  
+  JOIN "File" f ON tcfl.file_id = f.id
+  WHERE f."modified_at" > NOW() - INTERVAL '7 days' AND tc."user_id" = '{userId}'
+  ORDER BY f."modified_at" DESC;
+
+EXAMPLE ANALYTICS QUERIES:
+1. Cards with linked files: Use TrelloCardFileLink to join TrelloCard and File tables
+2. Task completion with documents: Calculate percentage using COUNT and LEFT JOIN
+3. Overdue tasks with email activity: Join TrelloCard, TrelloCardEmailLink, and Email tables with date filters
 
 Question: {question}
 User ID: {userId}
@@ -259,6 +275,8 @@ Tables:
 - "TrelloBoard": id (text), trello_id (text, unique), name (text), url (text), user_id (text)
 - "TrelloCard": id (text), trello_id (text, unique), name (text), description (text), url (text), list_name (text), list_id (text), status (text), priority (text), position (float), due_date (timestamp), created_at (timestamp), updated_at (timestamp), board_id (text), user_id (text)
 - "Session": id (text), session_id (text, unique), user_id (text), email (text), name (text), created_at (timestamp), last_accessed (timestamp), expires_at (timestamp)
+- "TrelloCardFileLink": card_id (text), file_id (text) - This is a JOIN TABLE. It links a "TrelloCard" to a "File". Use it to find which files are referenced in which cards.
+- "TrelloCardEmailLink": card_id (text), email_id (text) - This is a JOIN TABLE. It links a "TrelloCard" to an "Email". Use it to find which emails are related to which cards.
 
 File Types:
 - file_type can be: 'drive', 'docs', 'sheets', 'slides', 'forms'
@@ -319,10 +337,10 @@ PostgreSQL Features:
    * Validate table access
    */
   validateTableAccess(sql) {
-    const allowedTables = ['User', 'File', 'Email', 'TrelloBoard', 'TrelloCard', 'Session', 'EmailFileLink'];
+    const allowedTables = ['User', 'File', 'Email', 'TrelloBoard', 'TrelloCard', 'Session', 'EmailFileLink', 'TrelloCardFileLink', 'TrelloCardEmailLink'];
 
     // Extract table names from FROM and JOIN clauses
-    const tableRegex = /(?:FROM|JOIN)\\s+`?"?(\\w+)"?`/gi;
+    const tableRegex = /(?:FROM|JOIN)\s+`?"?(\w+)"?`?/gi;
     const matches = [...sql.matchAll(tableRegex)];
     const tables = matches.map(m => m[1]);
 
@@ -396,7 +414,7 @@ PostgreSQL Features:
       await this.llm.invoke('Hello');
       status.llm = 'ok';
     } catch(e) {
-      status.llam = 'error';
+      status.llm = 'error';
       status.status = 'degraded';
     }
     

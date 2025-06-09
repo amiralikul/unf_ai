@@ -141,7 +141,9 @@ router.get('/status', async (req, res) => {
         email: true,
         name: true,
         created_at: true,
-        updated_at: true
+        updated_at: true,
+        trello_api_key: true,
+        trello_token: true
       }
     });
 
@@ -154,13 +156,66 @@ router.get('/status', async (req, res) => {
 
     res.json({ 
       isAuthenticated: true,
-      user: user
+      user: {
+        ...user,
+        hasTrelloCredentials: !!(user.trello_api_key && user.trello_token)
+      }
     });
 
   } catch (error) {
     console.error('Error fetching user in /status endpoint:', error);
     // If we can't fetch the user, treat them as unauthenticated.
     return res.json({ isAuthenticated: false, user: null });
+  }
+});
+
+// Update Trello credentials
+router.post('/trello-credentials', requireAuth, async (req, res) => {
+  const { trelloApiKey, trelloToken } = req.body;
+  const userId = req.user.userId;
+
+  if (!trelloApiKey || !trelloToken) {
+    return res.status(400).json({ 
+      error: 'Both Trello API key and token are required',
+      code: 'MISSING_CREDENTIALS'
+    });
+  }
+
+  try {
+    // Update user's Trello credentials
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        trello_api_key: trelloApiKey,
+        trello_token: trelloToken,
+        updated_at: new Date()
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+        created_at: true,
+        updated_at: true
+      }
+    });
+
+    console.log(`🔑 Updated Trello credentials for user ${req.user.email}`);
+
+    res.json({
+      success: true,
+      message: 'Trello credentials updated successfully',
+      user: {
+        ...updatedUser,
+        hasTrelloCredentials: true
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating Trello credentials:', error);
+    res.status(500).json({
+      error: 'Failed to update Trello credentials',
+      code: 'UPDATE_FAILED'
+    });
   }
 });
 

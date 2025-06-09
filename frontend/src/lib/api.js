@@ -107,6 +107,7 @@ export const api = {
   getAuthStatus: () => apiClient.get('/auth/status'),
   getCurrentUser: () => apiClient.get('/auth/me'),
   logout: () => apiClient.post('/auth/logout'),
+  updateTrelloCredentials: (credentials) => apiClient.post('/auth/trello-credentials', credentials),
 
   // Drive files
   getDriveFiles: (params = {}) => {

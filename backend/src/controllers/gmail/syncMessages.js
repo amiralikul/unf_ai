@@ -4,6 +4,7 @@ import {
   ExternalServiceError, 
   DatabaseError
 } from '../../utils/errors.js';
+import { LinkDetectionService } from '../../services/LinkDetectionService.js';
 
 /**
  * Sync Gmail messages from the API
@@ -14,6 +15,7 @@ import {
  */
 export const syncMessagesController = (googleOAuth, prisma) => async (req, res) => {
   const userId = req.user.userId;
+  const linkDetectionService = new LinkDetectionService(prisma);
 
   try {
     // Get user tokens from database
@@ -45,7 +47,7 @@ export const syncMessagesController = (googleOAuth, prisma) => async (req, res) 
         // Return early if no messages found
         return sendSuccess(res, {
           message: 'No Gmail messages found to synchronize',
-          stats: { total: 0, created: 0, updated: 0, failed: 0 },
+          stats: { total: 0, created: 0, updated: 0, failed: 0, linksCreated: 0 },
           timestamp: new Date().toISOString()
         });
       }
@@ -59,7 +61,8 @@ export const syncMessagesController = (googleOAuth, prisma) => async (req, res) 
         total: gmailMessages.length,
         created: 0,
         updated: 0,
-        failed: 0
+        failed: 0,
+        linksCreated: 0
       };
       
       // Process each message
@@ -143,6 +146,19 @@ export const syncMessagesController = (googleOAuth, prisma) => async (req, res) 
                 }
               }
             }
+          }
+
+          // Detect Trello card references in email content and create links
+          try {
+            const emailText = `${subject} ${snippet} ${message.body || ''}`;
+            const linkResults = await linkDetectionService.processEmailText(savedMessage.id, emailText, userId);
+            results.linksCreated += linkResults.cardLinks.length;
+            
+            if (linkResults.errors.length > 0) {
+              console.warn(`Link detection errors for email ${savedMessage.id}:`, linkResults.errors);
+            }
+          } catch (linkError) {
+            console.warn(`Failed to detect links for email ${savedMessage.id}:`, linkError.message);
           }
           
           if (existingMessage) {

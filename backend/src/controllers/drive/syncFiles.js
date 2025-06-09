@@ -4,6 +4,7 @@ import {
   ExternalServiceError, 
   DatabaseError
 } from '../../utils/errors.js';
+import { LinkDetectionService } from '../../services/LinkDetectionService.js';
 
 /**
  * Sync Google Drive files from the API
@@ -14,6 +15,7 @@ import {
  */
 export const syncFilesController = (googleOAuth, prisma) => async (req, res) => {
   const userId = req.user.userId;
+  const linkDetectionService = new LinkDetectionService(prisma);
 
   try {
     // Get user tokens from database
@@ -45,7 +47,7 @@ export const syncFilesController = (googleOAuth, prisma) => async (req, res) => 
         // Return early if no files found
         return sendSuccess(res, {
           message: 'No Google Drive files found to synchronize',
-          stats: { total: 0, created: 0, updated: 0, failed: 0 },
+          stats: { total: 0, created: 0, updated: 0, failed: 0, linksCreated: 0 },
           timestamp: new Date().toISOString()
         });
       }
@@ -59,7 +61,8 @@ export const syncFilesController = (googleOAuth, prisma) => async (req, res) => 
         total: driveFiles.length,
         created: 0,
         updated: 0,
-        failed: 0
+        failed: 0,
+        linksCreated: 0
       };
       
       // Process each file
@@ -71,7 +74,7 @@ export const syncFilesController = (googleOAuth, prisma) => async (req, res) => 
           });
           
           // Save or update file with enhanced metadata
-          await tx.file.upsert({
+          const savedFile = await tx.file.upsert({
             where: { google_id: file.id },
             update: {
               name: file.name,
@@ -98,6 +101,30 @@ export const syncFilesController = (googleOAuth, prisma) => async (req, res) => 
               user_id: userId
             },
           });
+
+          // Check if file is referenced in any Trello card descriptions
+          try {
+            const cards = await tx.trelloCard.findMany({
+              where: { user_id: userId },
+              select: { id: true, description: true, name: true }
+            });
+
+            for (const card of cards) {
+              const cardText = `${card.name} ${card.description || ''}`;
+              const fileRefs = linkDetectionService.extractDriveFileReferences(cardText);
+              
+              if (fileRefs.includes(file.id)) {
+                try {
+                  await linkDetectionService.linkCardToFile(card.id, savedFile.id, 'reference');
+                  results.linksCreated++;
+                } catch (linkError) {
+                  console.warn(`Failed to link card ${card.id} to file ${savedFile.id}:`, linkError.message);
+                }
+              }
+            }
+          } catch (linkError) {
+            console.warn(`Failed to detect links for file ${savedFile.id}:`, linkError.message);
+          }
           
           if (existingFile) {
             results.updated++;

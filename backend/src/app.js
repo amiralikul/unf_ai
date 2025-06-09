@@ -10,6 +10,7 @@ import driveRoutes from './api/drive.js';
 import gmailRoutes from './api/gmail.js';
 import trelloRoutes from './api/trello.js';
 import aiRoutes from './api/ai.js';
+import linksRoutes from './api/links.js';
 
 // Import middleware
 import {
@@ -72,6 +73,7 @@ app.use('/api/drive', driveRoutes);
 app.use('/api/gmail', gmailRoutes);
 app.use('/api/trello', trelloRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/links', linksRoutes);
 
 // Debug endpoint (remove in production)
 if (process.env.NODE_ENV !== 'production') {
@@ -98,12 +100,6 @@ if (process.env.NODE_ENV !== 'production') {
     }
   });
 }
-
-
-
-
-
-
 
 // Error handling middleware (must be last)
 app.use(notFoundHandler);

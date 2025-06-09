@@ -188,7 +188,38 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
           { status: 'asc' },
           { position: 'asc' },
           { name: 'asc' }
-        ]
+        ],
+        include: {
+          file_links: {
+            include: {
+              file: {
+                select: {
+                  id: true,
+                  name: true,
+                  google_id: true,
+                  web_view_link: true,
+                  modified_at: true,
+                  file_type: true,
+                  mime_type: true
+                }
+              }
+            }
+          },
+          email_links: {
+            include: {
+              email: {
+                select: {
+                  id: true,
+                  subject: true,
+                  sender_name: true,
+                  sender_email: true,
+                  received_at: true,
+                  snippet: true
+                }
+              }
+            }
+          }
+        }
       }),
       prisma.trelloCard.count({ where: whereClause })
     ]);
@@ -201,7 +232,31 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
       ...card,
       id: card.trello_id, // Frontend expects 'id' field
       boardId: boardId,
-      boardName: board.name
+      boardName: board.name,
+      linkedFiles: card.file_links.map(link => ({
+        id: link.file.id,
+        name: link.file.name,
+        googleId: link.file.google_id,
+        webViewLink: link.file.web_view_link,
+        modifiedAt: link.file.modified_at,
+        fileType: link.file.file_type,
+        mimeType: link.file.mime_type,
+        linkType: link.link_type,
+        linkedAt: link.created_at
+      })),
+      linkedEmails: card.email_links.map(link => ({
+        id: link.email.id,
+        subject: link.email.subject,
+        senderName: link.email.sender_name,
+        senderEmail: link.email.sender_email,
+        receivedAt: link.email.received_at,
+        snippet: link.email.snippet,
+        linkType: link.link_type,
+        linkedAt: link.created_at
+      })),
+      // Remove the raw relationship data from the response
+      file_links: undefined,
+      email_links: undefined
     }));
 
     // Send response
