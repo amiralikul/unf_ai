@@ -1,10 +1,10 @@
 import { sendSuccess } from '../../utils/responses.js';
 import { getPaginationParams, getPaginationMeta } from '../../utils/pagination.js';
 import { 
-  AuthenticationError, 
   ExternalServiceError, 
   DatabaseError
 } from '../../utils/errors.js';
+import { getTrelloCredentials } from '../../utils/trelloAuth.js';
 
 /**
  * Get Trello boards with pagination and filtering
@@ -19,18 +19,13 @@ export const getBoardsController = (trelloService, prisma) => async (req, res) =
   const pagination = getPaginationParams({ page, limit });
 
   try {
-    // Get Trello credentials from environment (for now)
-    const trelloApiKey = process.env.TRELLO_API_KEY;
-    const trelloToken = process.env.TRELLO_TOKEN;
-
-    if (!trelloApiKey || !trelloToken) {
-      throw new AuthenticationError('Trello API credentials not configured', 'TRELLO_AUTH_REQUIRED');
-    }
+    // Get Trello credentials from user profile
+    const { trello_api_key, trello_token } = await getTrelloCredentials(prisma, userId);
 
     // Fetch boards from Trello
     let trelloBoards;
     try {
-      trelloBoards = await trelloService.getBoards(trelloApiKey, trelloToken);
+      trelloBoards = await trelloService.getBoards(trello_api_key, trello_token);
     } catch (error) {
       throw new ExternalServiceError('Trello', error.message, error);
     }

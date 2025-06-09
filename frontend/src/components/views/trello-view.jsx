@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, Filter, SortAsc, RefreshCw, AlertCircle } from "lucide-react"
+import { Plus, SortAsc, RefreshCw, AlertCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
@@ -60,7 +60,6 @@ const formatDate = (dateString) => {
 
 export default function TrelloView() {
   const [selectedBoardId, setSelectedBoardId] = useState(null)
-  const [statusFilter, setStatusFilter] = useState("all")
   const { user } = useAuth()
   
   // Use URL-based pagination
@@ -85,8 +84,7 @@ export default function TrelloView() {
     error: cardsError 
   } = useTrelloCardsWithPagination(selectedBoardId, {
     page: pagination.page,
-    limit: pagination.limit,
-    filter: statusFilter !== "all" ? statusFilter : undefined
+    limit: pagination.limit
   })
   
   // Sync mutations
@@ -100,10 +98,7 @@ export default function TrelloView() {
     }
   }, [boardsData, selectedBoardId])
 
-  // Reset status filter when board changes
-  useEffect(() => {
-    setStatusFilter("all")
-  }, [selectedBoardId])
+
   
   // Handle refresh
   const handleRefresh = () => {
@@ -134,28 +129,6 @@ export default function TrelloView() {
   const lists = cardsData?.lists || []
   const selectedBoard = boardsData?.boards?.find(board => board.id === selectedBoardId)
   
-  // Create dynamic status options based on actual lists
-  const availableStatuses = lists.length > 0 
-    ? lists.map(list => ({
-        value: list.status,
-        label: list.name,
-        status: list.status
-      }))
-    : [
-        { value: "To Do", label: "To Do", status: "To Do" },
-        { value: "In Progress", label: "In Progress", status: "In Progress" },
-        { value: "Review", label: "Review", status: "Review" },
-        { value: "Done", label: "Done", status: "Done" }
-      ];
-
-  // Get unique statuses in case multiple lists map to the same status
-  const uniqueStatuses = availableStatuses.reduce((acc, curr) => {
-    if (!acc.find(item => item.value === curr.value)) {
-      acc.push(curr);
-    }
-    return acc;
-  }, []);
-
   // Create a map for quick list name lookup
   const listNameMap = {};
   lists.forEach(list => {
@@ -206,50 +179,24 @@ export default function TrelloView() {
             )}
           </div>
           <div className="flex gap-2 flex-wrap">
-            {uniqueStatuses.map(statusInfo => {
-              const count = cards.filter((card) => card.status === statusInfo.status).length;
-              const listName = listNameMap[statusInfo.status] || statusInfo.label;
+            {lists.map(list => {
+              const count = cards.filter((card) => card.status === list.status).length;
               
-                              return (
-                  <Badge 
-                    key={statusInfo.value}
-                    variant="default"
-                    className="text-sm bg-blue-500 text-white"
-                  >
-                    {count} {listName}
-                  </Badge>
-                );
+              return (
+                <Badge 
+                  key={list.id}
+                  variant="default"
+                  className="text-sm bg-blue-500 text-white"
+                >
+                  {count} {list.name}
+                </Badge>
+              );
             })}
           </div>
         </CardHeader>
         <CardContent className="p-4 md:p-6">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pb-4">
             <div className="flex items-center gap-2 justify-end sm:justify-start flex-wrap ml-auto">
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  {uniqueStatuses.map(statusInfo => {
-                    // Map status to the format expected by backend
-                    const filterValue = statusInfo.status === "To Do" ? "todo" :
-                                       statusInfo.status === "In Progress" ? "inprogress" :
-                                       statusInfo.status === "Review" ? "review" :
-                                       statusInfo.status === "Done" ? "done" :
-                                       statusInfo.status.toLowerCase().replace(/\s+/g, '');
-                    
-                    return (
-                      <SelectItem key={statusInfo.value} value={filterValue}>
-                        {listNameMap[statusInfo.status] || statusInfo.label}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
-              </Select>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
-              </Button>
               <Button variant="outline" size="icon">
                 <SortAsc className="h-4 w-4" />
               </Button>

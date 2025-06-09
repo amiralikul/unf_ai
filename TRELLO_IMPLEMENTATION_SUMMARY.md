@@ -92,8 +92,6 @@ Successfully implemented the complete Trello Implementation Plan for Advanced An
 **Link Retrieval:**
 - `GET /api/links/card/:cardId` - Get all links for a specific card
 
-
-
 #### ✅ Security & Validation
 - User authentication required for all endpoints
 - User data isolation (users can only access their own data)
@@ -311,4 +309,59 @@ The implementation is production-ready with:
 - Test coverage validation
 - Performance optimizations
 
-All target analytics queries from the original plan are now fully supported and can be executed through the LangChain natural language interface. 
+All target analytics queries from the original plan are now fully supported and can be executed through the LangChain natural language interface.
+
+## Configuration Architecture
+
+### Authentication Strategy
+✅ **Current (Standardized)**: Per-user credentials stored in database
+- Each user provides their own Trello API key and token
+- Credentials stored securely in `User` table
+- Isolated access - users can only see their own data
+- Centralized credential fetching via `getTrelloCredentials()` utility
+
+### Database Schema
+- `User.trello_api_key` - User's Trello API key
+- `User.trello_token` - User's Trello access token
+- `TrelloBoard` - Synced board data with user association
+- `TrelloCard` - Synced card data with board association
+
+## Recent Changes
+
+### Configuration Drift Resolution (2024)
+**Problem**: Mixed credential sources across controllers
+- `getBoards` and `getBoardCards` used `process.env.TRELLO_API_KEY/TOKEN`
+- `syncBoards` used database credentials (`user.trello_api_key/token`)
+- Inconsistent behavior and potential security issues
+
+**Solution**: Standardized on per-user database credentials
+- ✅ Updated `getBoards` to use database credentials
+- ✅ Updated `getBoardCards` to use database credentials  
+- ✅ Created `getTrelloCredentials()` utility to eliminate duplication
+- ✅ Removed all `process.env.TRELLO_*` references
+- ✅ All controllers now use consistent authentication approach
+
+**Benefits**:
+- Eliminates configuration drift
+- Reduces code duplication 
+- Improves security (no shared credentials)
+- Enables proper multi-user support
+- Single source of truth for credential handling
+
+## Implementation Status
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| User Authentication | ✅ Complete | Per-user API credentials |
+| Board Listing | ✅ Complete | Paginated, database-synced |
+| Card Listing | ✅ Complete | Paginated, filtered, searchable |
+| Data Synchronization | ✅ Complete | Full sync with link detection |
+| Frontend Integration | ✅ Complete | React components with error handling |
+| Configuration Management | ✅ Complete | Standardized database approach |
+
+## Next Steps
+
+1. **Testing**: Add comprehensive unit tests for the new standardized approach
+2. **Monitoring**: Add logging for credential validation failures
+3. **Performance**: Consider caching credentials for request duration
+4. **Documentation**: Update API documentation to reflect credential requirements 

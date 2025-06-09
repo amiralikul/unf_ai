@@ -1,11 +1,11 @@
 import { sendSuccess } from '../../utils/responses.js';
 import { getPaginationParams, getPaginationMeta } from '../../utils/pagination.js';
 import { 
-  AuthenticationError, 
   ExternalServiceError, 
   DatabaseError,
   NotFoundError
 } from '../../utils/errors.js';
+import { getTrelloCredentials } from '../../utils/trelloAuth.js';
 
 /**
  * Get cards for a specific Trello board with pagination and filtering
@@ -33,20 +33,15 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
       throw new NotFoundError('Board not found or access denied', 'BOARD_NOT_FOUND');
     }
 
-    // Get Trello credentials from environment (for now)
-    const trelloApiKey = process.env.TRELLO_API_KEY;
-    const trelloToken = process.env.TRELLO_TOKEN;
-
-    if (!trelloApiKey || !trelloToken) {
-      throw new AuthenticationError('Trello API credentials not configured', 'TRELLO_AUTH_REQUIRED');
-    }
+    // Get Trello credentials from user profile
+    const { trello_api_key, trello_token } = await getTrelloCredentials(prisma, userId);
 
     // Fetch both cards and lists from Trello
     let trelloCards, trelloLists;
     try {
       [trelloCards, trelloLists] = await Promise.all([
-        trelloService.getCardsForBoard(trelloApiKey, trelloToken, boardId),
-        trelloService.getBoardLists(trelloApiKey, trelloToken, boardId)
+        trelloService.getCardsForBoard(trello_api_key, trello_token, boardId),
+        trelloService.getBoardLists(trello_api_key, trello_token, boardId)
       ]);
     } catch (error) {
       throw new ExternalServiceError('Trello', error.message, error);
@@ -56,28 +51,17 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
     const listMap = {};
     const sortedLists = trelloLists.sort((a, b) => a.pos - b.pos);
     
-    sortedLists.forEach((list, index) => {
+    sortedLists.forEach(list => {
+      const status = trelloService.mapListNameToStatus(list.name);
       listMap[list.id] = {
+        id: list.id,
         name: list.name,
-        position: index,
-        status: trelloService.mapListNameToStatus(list.name)
+        status: status,
+        position: list.pos
       };
     });
 
-    // Enhance status mapping with position-based fallback
-    sortedLists.forEach((list, index) => {
-      const listInfo = listMap[list.id];
-      if (listInfo.status === 'To Do' && index > 0) {
-        // Refine status based on position if name-based mapping was generic
-        const totalLists = sortedLists.length;
-        if (index === 0) listInfo.status = 'To Do';
-        else if (index === totalLists - 1) listInfo.status = 'Done';
-        else if (index === totalLists - 2) listInfo.status = 'Review';
-        else listInfo.status = 'In Progress';
-      }
-    });
-
-    // Save/update cards in database with enhanced mapping
+    // Save/update cards in database with transaction
     const savedCards = await prisma.$transaction(async (tx) => {
       const results = [];
       
@@ -136,48 +120,20 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
       board_id: board.id,
       user_id: userId
     };
-    
-    // Add filter logic (search is handled separately with raw SQL)
-    if (filter === 'recent') {
-      // Show cards created in the last 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      whereClause.created_at = { gte: thirtyDaysAgo };
-    } else if (filter === 'due-soon') {
-      // Show cards with due dates in the next 7 days
-      const nextWeek = new Date();
-      nextWeek.setDate(nextWeek.getDate() + 7);
-      whereClause.due_date = {
-        gte: new Date(),
-        lte: nextWeek
-      };
-    } else if (filter === 'overdue') {
-      // Show cards with past due dates
-      whereClause.due_date = {
-        lt: new Date()
-      };
-    } else if (filter && filter !== 'all') {
-      // Handle both legacy filter values and direct status filtering
-      const statusMap = {
-        'todo': 'To Do',
-        'inprogress': 'In Progress', 
-        'review': 'Review',
-        'done': 'Done'
-      };
-      
-      // Use mapped status if it's a legacy filter, otherwise treat as direct status value
-      const targetStatus = statusMap[filter] || filter;
-      whereClause.status = targetStatus;
-    }
 
-    // Add search filter if provided
-    if (search) {
+    // Add search filter
+    if (search && search.trim()) {
       whereClause.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } }
+        { name: { contains: search.trim(), mode: 'insensitive' } },
+        { description: { contains: search.trim(), mode: 'insensitive' } }
       ];
     }
-    
+
+    // Add status filter
+    if (filter && filter !== 'all') {
+      whereClause.status = filter;
+    }
+
     // Get paginated results from database
     const [cards, total] = await Promise.all([
       prisma.trelloCard.findMany({
@@ -192,31 +148,12 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
         include: {
           file_links: {
             include: {
-              file: {
-                select: {
-                  id: true,
-                  name: true,
-                  google_id: true,
-                  web_view_link: true,
-                  modified_at: true,
-                  file_type: true,
-                  mime_type: true
-                }
-              }
+              file: true
             }
           },
           email_links: {
             include: {
-              email: {
-                select: {
-                  id: true,
-                  subject: true,
-                  sender_name: true,
-                  sender_email: true,
-                  received_at: true,
-                  snippet: true
-                }
-              }
+              email: true
             }
           }
         }

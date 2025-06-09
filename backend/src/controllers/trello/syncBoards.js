@@ -1,10 +1,10 @@
 import { sendSuccess } from '../../utils/responses.js';
 import { 
-  AuthenticationError, 
   ExternalServiceError, 
   DatabaseError
 } from '../../utils/errors.js';
 import { LinkDetectionService } from '../../services/LinkDetectionService.js';
+import { getTrelloCredentials } from '../../utils/trelloAuth.js';
 
 /**
  * Sync Trello boards and cards from the API
@@ -19,27 +19,17 @@ export const syncBoardsController = (trelloService, prisma) => async (req, res) 
 
   try {
     // Get Trello credentials from user profile
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: { 
-        trello_api_key: true,
-        trello_token: true
-      }
-    });
-    
-    if (!user || !user.trello_api_key || !user.trello_token) {
-      throw new AuthenticationError('Trello API credentials not configured for this user', 'TRELLO_AUTH_REQUIRED');
-    }
+    const { trello_api_key, trello_token } = await getTrelloCredentials(prisma, userId);
 
     // Fetch boards from Trello
     let trelloBoards, trelloLists;
     try {
-      trelloBoards = await trelloService.getBoards(user.trello_api_key, user.trello_token);
+      trelloBoards = await trelloService.getBoards(trello_api_key, trello_token);
       
       // Also fetch all lists for all boards to get status info
       trelloLists = await Promise.all(
         trelloBoards.map(board => 
-          trelloService.getBoardLists(user.trello_api_key, user.trello_token, board.id)
+          trelloService.getBoardLists(trello_api_key, trello_token, board.id)
         )
       );
       trelloLists = trelloLists.flat();
@@ -84,7 +74,7 @@ export const syncBoardsController = (trelloService, prisma) => async (req, res) 
           else results.boards.created++;
 
           // Fetch and upsert cards for this board
-          const cards = await trelloService.getCardsForBoard(user.trello_api_key, user.trello_token, board.id);
+          const cards = await trelloService.getCardsForBoard(trello_api_key, trello_token, board.id);
           results.cards.total += cards.length;
 
           for (const card of cards) {
