@@ -17,9 +17,9 @@ class GoogleOAuthService {
       'https://www.googleapis.com/auth/documents.readonly',
       'https://www.googleapis.com/auth/spreadsheets.readonly',
       'https://www.googleapis.com/auth/presentations.readonly',
-      'https://www.googleapis.com/auth/forms.readonly',
-      'https://www.googleapis.com/auth/userinfo.email',
-      'https://www.googleapis.com/auth/userinfo.profile'
+      'openid',
+      'email',
+      'profile'
     ];
   }
 
@@ -28,7 +28,8 @@ class GoogleOAuthService {
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: this.scopes,
-      prompt: 'consent' // Force consent screen to get refresh token
+      prompt: 'consent select_account', // Force consent screen and account selection
+      include_granted_scopes: true
     });
   }
 
