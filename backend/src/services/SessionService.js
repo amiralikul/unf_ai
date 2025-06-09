@@ -23,11 +23,11 @@ class SessionService {
     try {
       await this.prisma.session.create({
         data: {
-          sessionId,
-          userId: userData.userId,
+          session_id: sessionId,
+          user_id: userData.userId,
           email: userData.email,
           name: userData.name,
-          expiresAt,
+          expires_at: expiresAt,
         }
       });
 
@@ -45,14 +45,14 @@ class SessionService {
 
     try {
       const session = await this.prisma.session.findUnique({
-        where: { sessionId },
+        where: { session_id: sessionId },
         include: { user: true }
       });
 
       if (!session) return null;
 
       // Check if session is expired
-      if (session.expiresAt < new Date()) {
+      if (session.expires_at < new Date()) {
         console.log(`⏰ Session expired: ${sessionId.substring(0, 10)}...`);
         await this.deleteSession(sessionId);
         return null;
@@ -60,15 +60,15 @@ class SessionService {
 
       // Update last accessed time
       await this.prisma.session.update({
-        where: { sessionId },
-        data: { lastAccessed: new Date() }
+        where: { session_id: sessionId },
+        data: { last_accessed: new Date() }
       });
 
       return {
-        userId: session.userId,
+        userId: session.user_id,
         email: session.email,
         name: session.name,
-        createdAt: session.createdAt,
+        createdAt: session.created_at,
         lastAccessed: new Date()
       };
     } catch (error) {
@@ -83,7 +83,7 @@ class SessionService {
 
     try {
       await this.prisma.session.delete({
-        where: { sessionId }
+        where: { session_id: sessionId }
       });
       console.log(`🗑️ Deleted session ${sessionId.substring(0, 10)}...`);
       return true;
@@ -99,14 +99,14 @@ class SessionService {
 
     try {
       const session = await this.prisma.session.findUnique({
-        where: { sessionId },
-        select: { id: true, expiresAt: true }
+        where: { session_id: sessionId },
+        select: { id: true, expires_at: true }
       });
 
       if (!session) return false;
       
       // Check if expired
-      if (session.expiresAt < new Date()) {
+      if (session.expires_at < new Date()) {
         await this.deleteSession(sessionId);
         return false;
       }
@@ -123,7 +123,7 @@ class SessionService {
     try {
       return await this.prisma.session.count({
         where: {
-          expiresAt: { gt: new Date() } // Only count non-expired sessions
+          expires_at: { gt: new Date() } // Only count non-expired sessions
         }
       });
     } catch (error) {
@@ -137,7 +137,7 @@ class SessionService {
     try {
       const result = await this.prisma.session.deleteMany({
         where: {
-          expiresAt: { lt: new Date() }
+          expires_at: { lt: new Date() }
         }
       });
 

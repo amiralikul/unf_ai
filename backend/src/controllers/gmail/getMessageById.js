@@ -34,8 +34,10 @@ export const getMessageByIdController = (googleOAuth, prisma) => async (req, res
       ...message,
       id: message.googleId, // Frontend expects 'id' field
       gmailId: message.googleId, // For backward compatibility
-      from: message.sender,
-      to: message.recipient,
+      from: message.senderEmail || message.sender,
+      to: message.recipientEmail || message.recipient,
+      fromName: message.senderName,
+      toName: message.recipientName,
       labelNames: [] // Email model doesn't have labels yet
     };
 

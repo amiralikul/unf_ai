@@ -20,82 +20,42 @@ export const getMessagesController = (googleOAuth, prisma) => async (req, res) =
 
   try {
     // Build database query filters
-    const whereClause = { userId };
+    const whereClause = { user_id: userId };
     
     // Add filter logic based on the filter parameter
     if (filter === 'recent') {
       // Show emails from last 7 days
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      whereClause.receivedAt = { gte: sevenDaysAgo };
+      whereClause.received_at = { gte: sevenDaysAgo };
     } else if (filter === 'unread') {
       // Show only unread emails
-      whereClause.isRead = false;
+      whereClause.is_read = false;
     } else if (filter === 'important') {
       // Show only important emails
-      whereClause.isImportant = true;
+      whereClause.is_important = true;
     }
     
-    // Get paginated results from database (handle search with raw SQL for SQLite compatibility)
-    let messages, total;
-    
+    // Add search filter if provided (PostgreSQL supports case-insensitive search natively)
     if (search) {
-      // For search queries, use raw SQL to support case-insensitive search in SQLite
-      const searchPattern = `%${search.toLowerCase()}%`;
-      const baseWhereConditions = [];
-      const baseParams = [];
-      
-      // Add base conditions
-      baseWhereConditions.push('userId = ?');
-      baseParams.push(userId);
-      
-      // Add filter conditions if any
-      if (filter === 'recent') {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        baseWhereConditions.push('receivedAt >= ?');
-        baseParams.push(sevenDaysAgo.toISOString());
-      } else if (filter === 'unread') {
-        baseWhereConditions.push('isRead = ?');
-        baseParams.push(false);
-      } else if (filter === 'important') {
-        baseWhereConditions.push('isImportant = ?');
-        baseParams.push(true);
-      }
-      
-      const baseWhere = baseWhereConditions.join(' AND ');
-      
-      // Build search query with case-insensitive LIKE
-      const searchQuery = `
-        SELECT * FROM "Email" 
-        WHERE ${baseWhere} AND (LOWER(subject) LIKE ? OR LOWER(COALESCE(body, '')) LIKE ? OR LOWER(sender) LIKE ?)
-        ORDER BY receivedAt DESC
-        LIMIT ? OFFSET ?
-      `;
-      
-      const countQuery = `
-        SELECT COUNT(*) as count FROM "Email" 
-        WHERE ${baseWhere} AND (LOWER(subject) LIKE ? OR LOWER(COALESCE(body, '')) LIKE ? OR LOWER(sender) LIKE ?)
-      `;
-      
-      const searchParams = [...baseParams, searchPattern, searchPattern, searchPattern];
-      
-      [messages, total] = await Promise.all([
-        prisma.$queryRawUnsafe(searchQuery, ...searchParams, pagination.limit, pagination.skip),
-        prisma.$queryRawUnsafe(countQuery, ...searchParams).then(result => Number(result[0].count))
-      ]);
-    } else {
-      // For non-search queries, use regular Prisma queries
-      [messages, total] = await Promise.all([
-        prisma.email.findMany({
-          where: whereClause,
-          skip: pagination.skip,
-          take: pagination.limit,
-          orderBy: { receivedAt: 'desc' }
-        }),
-        prisma.email.count({ where: whereClause })
-      ]);
+      whereClause.OR = [
+        { subject: { contains: search, mode: 'insensitive' } },
+        { body: { contains: search, mode: 'insensitive' } },
+        { sender_name: { contains: search, mode: 'insensitive' } },
+        { sender_email: { contains: search, mode: 'insensitive' } }
+      ];
     }
+    
+    // Get paginated results from database
+    const [messages, total] = await Promise.all([
+      prisma.email.findMany({
+        where: whereClause,
+        skip: pagination.skip,
+        take: pagination.limit,
+        orderBy: { received_at: 'desc' }
+      }),
+      prisma.email.count({ where: whereClause })
+    ]);
 
     // Calculate pagination metadata
     const paginationMeta = getPaginationMeta(total, pagination.page, pagination.limit);
@@ -103,12 +63,14 @@ export const getMessagesController = (googleOAuth, prisma) => async (req, res) =
     // Transform response to match frontend expectations
     const transformedMessages = messages.map(message => ({
       ...message,
-      id: message.googleId, // Frontend expects 'id' field
-      gmailId: message.googleId, // For backward compatibility
-      from: message.sender,
-      to: message.recipient,
-      isRead: message.isRead,
-      isImportant: message.isImportant,
+      id: message.google_id, // Frontend expects 'id' field
+      gmailId: message.google_id, // For backward compatibility
+      from: message.sender_email || message.sender, // Fallback to old sender
+      to: message.recipient_email || message.recipient, // Fallback to old recipient
+      fromName: message.sender_name,
+      toName: message.recipient_name,
+      isRead: message.is_read,
+      isImportant: message.is_important,
       labelNames: [] // Email model doesn't have labels yet
     }));
 

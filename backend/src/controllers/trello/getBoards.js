@@ -42,16 +42,16 @@ export const getBoardsController = (trelloService, prisma) => async (req, res) =
       for (const board of trelloBoards) {
         try {
           const savedBoard = await tx.trelloBoard.upsert({
-            where: { trelloId: board.id },
+            where: { trello_id: board.id },
             update: {
               name: board.name,
               url: board.url,
             },
             create: {
-              trelloId: board.id,
+              trello_id: board.id,
               name: board.name,
               url: board.url,
-              userId: userId,
+              user_id: userId,
             },
           });
           results.push(savedBoard);
@@ -65,7 +65,7 @@ export const getBoardsController = (trelloService, prisma) => async (req, res) =
     });
 
     // Build database query filters
-    const whereClause = { userId };
+    const whereClause = { user_id: userId };
     // Add filter logic if needed
 
     // Get paginated results from database
@@ -90,7 +90,7 @@ export const getBoardsController = (trelloService, prisma) => async (req, res) =
     // Transform response to match frontend expectations
     const transformedBoards = boards.map(board => ({
       ...board,
-      id: board.trelloId, // Frontend expects 'id' field
+      id: board.trello_id, // Frontend expects 'id' field
       cardCount: board._count.cards
     }));
 

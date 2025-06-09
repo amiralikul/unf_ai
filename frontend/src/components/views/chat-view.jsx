@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -14,6 +15,15 @@ import {
 } from "lucide-react"
 import { useNLToSQL } from "@/hooks/useAI"
 import { useAutoScroll } from "@/hooks/useAutoScroll"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import "@/assets/custom-scrollbar.css"
 
 export default function ChatView() {
   const [messages, setMessages] = useState([
@@ -77,6 +87,47 @@ export default function ChatView() {
       e.preventDefault()
       handleSendMessage()
     }
+  }
+
+  // Helper function to render SQL query results as a table
+  const renderSQLTable = (sqlInfo) => {
+    if (!sqlInfo || !sqlInfo.results || sqlInfo.results.length === 0) {
+      return null
+    }
+
+    const headers = Object.keys(sqlInfo.results[0])
+    const rows = sqlInfo.results
+
+    return (
+      <div className="mt-4 rounded-lg border">
+        <div className="max-h-64 overflow-auto custom-scrollbar">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {headers.map((header) => (
+                  <TableHead key={header}>{header}</TableHead>
+                ))}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((row, rowIndex) => (
+                <TableRow key={rowIndex}>
+                  {headers.map((header) => (
+                    <TableCell key={`${rowIndex}-${header}`}>
+                      {header.toLowerCase().includes('date') || header.toLowerCase().includes('at')
+                        ? format(new Date(row[header]), "PPPpp")
+                        : typeof row[header] === 'object' && row[header] !== null
+                        ? JSON.stringify(row[header])
+                        : String(row[header])}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    )
   }
 
   // Helper function to render SQL info
@@ -157,6 +208,10 @@ export default function ChatView() {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm">{message.content}</p>
+                      
+                      {/* Render SQL results table */}
+                      {message.sqlInfo && renderSQLTable(message.sqlInfo)}
+
                       <p className="mt-1 text-xs opacity-70">
                         {message.timestamp.toLocaleTimeString([], {
                           hour: "2-digit",
@@ -210,12 +265,28 @@ export default function ChatView() {
               <p className="text-xs text-muted-foreground mb-2">Try these sample questions:</p>
               <div className="flex flex-wrap gap-1">
                 {[
-                  "How many files do I have?",
-                  "Show me my recent emails",
-                  "What are my Trello cards?",
-                  "Count my files by type",
-                  "Which emails are unread?",
-                  "Show me overdue tasks"
+                  // "How many files do I have?",
+                  // "Show me my recent emails",
+                  // "What are my Trello cards?",
+                  // "Count my files by type",
+                  // "Which emails are unread?",
+                  // "Show me overdue tasks",
+
+                  "Who owns the most files?",
+                  "Which file was modified most recently?",
+                  "What is the distribution of files by their last modified date?",
+
+                  "How many Google Docs do I have?",
+                  "Show me my shared Google Sheets",
+                  "Which Google Docs were referenced in emails?",
+
+                  "Which files have been shared via email but not modified recently?",
+                  "Who sends the most file-related emails?",
+                  "Which Trello cards are linked to recently modified files?",
+
+                  "What percentage of my files are Google Docs vs regular files?",
+                  "Show me Google Docs that are shared with others",
+                  "Which Google Docs have been mentioned in recent emails?",
                 ].map((sample, index) => (
                   <Button
                     key={index}

@@ -1,135 +1,152 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  
-  // Google OAuth tokens
-  googleAccessToken  String?
-  googleRefreshToken String?
-  
-  // Trello tokens
-  trelloApiKey String?
-  trelloToken  String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Relations
-  files     File[]
-  emails    Email[]
-  boards    TrelloBoard[]
-  cards     TrelloCard[]
-  sessions  Session[]
+  id                 String        @id @default(cuid())
+  email              String        @unique
+  name               String?
+  google_access_token  String?
+  google_refresh_token String?
+  trello_api_key       String?
+  trello_token        String?
+  created_at          DateTime      @default(now())
+  updated_at          DateTime      @updatedAt
+  emails             Email[]
+  files              File[]
+  sessions           Session[]
+  boards             TrelloBoard[]
+  cards              TrelloCard[]
 }
 
 model File {
-  id          String   @id @default(cuid())
-  googleId    String   @unique
-  name        String
-  mimeType    String?
-  size        Int?
-  webViewLink String?
-  owners      String   // JSON array of owners
-  modifiedAt  DateTime
-  createdAt   DateTime @default(now())
-  
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId])
-  @@index([modifiedAt])
+  id            String   @id @default(cuid())
+  google_id      String   @unique
+  name          String
+  mime_type      String?
+  size          BigInt?
+  web_view_link  String?
+  owners        Json
+  modified_at    DateTime
+  created_at     DateTime @default(now())
+  user_id        String
+  file_type      String?  @default("drive") // 'drive', 'docs', 'sheets', 'slides', 'forms'
+  docs_url       String?  // Original Google Docs URL
+  is_shared      Boolean? @default(false)
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  emails        EmailFileLink[]
+
+  @@index([user_id])
+  @@index([modified_at])
+  @@index([mime_type])
+  @@index([file_type])
+  @@index([file_type, user_id])
+  @@map("File")
 }
 
 model Email {
-  id          String   @id @default(cuid())
-  googleId    String   @unique
-  threadId    String?
-  subject     String
-  sender      String
-  recipient   String
-  body        String?
-  snippet     String?
-  isRead      Boolean  @default(true)
-  isImportant Boolean  @default(false)
-  receivedAt  DateTime
-  createdAt   DateTime @default(now())
-  
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([userId])
-  @@index([receivedAt])
+  id              String   @id @default(cuid())
+  google_id        String   @unique
+  thread_id        String?
+  subject         String
+  sender          String?
+  sender_name      String?
+  sender_email     String?
+  recipient       String?
+  recipient_name   String?
+  recipient_email  String?
+  body            String?
+  snippet         String?
+  is_read          Boolean  @default(true)
+  is_important     Boolean  @default(false)
+  received_at      DateTime
+  created_at       DateTime @default(now())
+  user_id          String
+  user            User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  attachments     EmailFileLink[]
+
+  @@index([user_id])
+  @@index([received_at])
+  @@index([sender])
+  @@index([sender_email])
+  @@index([recipient_email])
+  @@index([is_read, user_id])
+  @@index([is_important, user_id])
+  @@map("Email")
+}
+
+model EmailFileLink {
+  email   Email  @relation(fields: [email_id], references: [id], onDelete: Cascade)
+  email_id String
+  file    File   @relation(fields: [file_id], references: [id], onDelete: Cascade)
+  file_id  String
+
+  @@id([email_id, file_id])
+  @@index([file_id])
+  @@map("EmailFileLink")
 }
 
 model TrelloBoard {
-  id       String @id @default(cuid())
-  trelloId String @unique
-  name     String
-  url      String?
-  
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  cards TrelloCard[]
-  
-  @@index([userId])
+  id        String       @id @default(cuid())
+  trello_id  String       @unique
+  name      String
+  url       String?
+  user_id    String
+  user      User         @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  cards     TrelloCard[]
+
+  @@index([user_id])
+  @@map("TrelloBoard")
 }
 
 model TrelloCard {
-  id          String   @id @default(cuid())
-  trelloId    String   @unique
+  id          String      @id @default(cuid())
+  trello_id    String      @unique
   name        String
   description String?
   url         String?
-  listName    String?
-  listId      String?  // Trello list ID for status mapping
-  status      String?  // To Do, In Progress, Review, Done
-  priority    String?  // Low, Medium, High
-  position    Float?   // Card position in list
-  dueDate     DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt @default(now())
-  
-  boardId String
-  board   TrelloBoard @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  list_name    String?
+  list_id      String?
+  status      String?
+  priority    String?
+  position    Float?
+  due_date     DateTime?
+  created_at   DateTime    @default(now())
+  updated_at   DateTime    @default(now()) @updatedAt
+  board_id     String
+  user_id      String
+  board       TrelloBoard @relation(fields: [board_id], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([boardId])
-  @@index([userId])
+  @@index([board_id])
+  @@index([user_id])
   @@index([status])
   @@index([priority])
+  @@index([due_date])
+  @@index([status, user_id])
+  @@index([priority, user_id])
+  @@index([due_date, user_id])
+  @@map("TrelloCard")
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionId    String   @unique
-  userId       String
-  email        String
-  name         String?
-  createdAt    DateTime @default(now())
-  lastAccessed DateTime @default(now())
-  expiresAt    DateTime
-  
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@index([sessionId])
-  @@index([userId])
-  @@index([expiresAt])
+  id            String   @id @default(cuid())
+  session_id     String   @unique
+  user_id        String
+  email         String
+  name          String?
+  created_at     DateTime @default(now())
+  last_accessed  DateTime @default(now())
+  expires_at     DateTime
+  user          User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([session_id])
+  @@index([user_id])
+  @@index([expires_at])
+  @@map("Session")
 }

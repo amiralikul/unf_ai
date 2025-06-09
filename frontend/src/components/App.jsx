@@ -5,7 +5,6 @@ import GmailView from "@/components/views/gmail-view"
 import DriveView from "@/components/views/drive-view"
 import TrelloView from "@/components/views/trello-view"
 import ChatView from "@/components/views/chat-view"
-import OldDashboard from "@/OldDashboard"
 import ProtectedRoute from "@/components/ProtectedRoute"
 import LoginPage from "@/pages/LoginPage"
 import AuthCallback from "@/components/AuthCallback"
@@ -16,12 +15,10 @@ export default function App() {
 
   return (
     <Routes>
-      {/* Public routes */}
       <Route path="/login" element={<LoginPage />} />
       <Route path="/auth/callback" element={<AuthCallback />} />
-      {/*<Route path="/app" element={<OldDashboard />} />*/}
       
-      {/* Protected routes */}
+      
       <Route path="/*" element={
         <ProtectedRoute>
           <SidebarProvider>

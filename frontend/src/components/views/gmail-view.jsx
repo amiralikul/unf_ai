@@ -176,8 +176,8 @@ export default function GmailView() {
                           className={email.isRead ? "" : "font-medium bg-muted/30"}
                         >
                           <TableCell className="truncate pr-2">
-                            <div className="truncate" title={email.from}>
-                              {email.from}
+                            <div className="truncate" title={`${email.fromName || ''} <${email.from}>`}>
+                              {email.fromName || email.from}
                             </div>
                           </TableCell>
                           <TableCell className="pr-2">
@@ -219,7 +219,9 @@ export default function GmailView() {
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate text-sm">{email.from}</p>
+                          <p className="font-medium truncate text-sm" title={`${email.fromName || ''} <${email.from}>`}>
+                            {email.fromName || email.from}
+                          </p>
                           <p className="text-xs text-muted-foreground">{formatDate(email.receivedAt)}</p>
                         </div>
                         {email.isImportant && (

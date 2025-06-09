@@ -44,14 +44,6 @@ export const trelloBoardParamSchema = z.object({
 });
 
 // AI schemas
-export const aiQuerySchema = z.object({
-  query: z.string().min(1, 'Query is required').max(1000, 'Query too long'),
-  context: z.enum(['drive', 'gmail', 'trello', 'all']).default('all'),
-  includeFiles: z.boolean().default(true),
-  includeEmails: z.boolean().default(true),
-  includeCards: z.boolean().default(true),
-});
-
 export const nlToSqlSchema = z.object({
   question: z.string().min(1, 'Question is required').max(1000, 'Question too long'),
 });

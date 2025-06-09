@@ -1,4 +1,5 @@
 import { google } from 'googleapis';
+import addressparser from 'addressparser';
 
 class GoogleOAuthService {
   constructor() {
@@ -8,11 +9,15 @@ class GoogleOAuthService {
       process.env.GOOGLE_REDIRECT_URI
     );
 
-    // Scopes for Drive and Gmail access
+    // Scopes for Drive, Gmail, and Google Docs access
     this.scopes = [
       'https://www.googleapis.com/auth/drive.readonly',
       'https://www.googleapis.com/auth/drive.metadata.readonly',
       'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/documents.readonly',
+      'https://www.googleapis.com/auth/spreadsheets.readonly',
+      'https://www.googleapis.com/auth/presentations.readonly',
+      'https://www.googleapis.com/auth/forms.readonly',
       'https://www.googleapis.com/auth/userinfo.email',
       'https://www.googleapis.com/auth/userinfo.profile'
     ];
@@ -58,7 +63,20 @@ class GoogleOAuthService {
     }
   }
 
-  // Get Drive files
+  // Helper method to determine file type based on MIME type
+  _getFileType(mimeType) {
+    const typeMap = {
+      'application/vnd.google-apps.document': 'docs',
+      'application/vnd.google-apps.spreadsheet': 'sheets',
+      'application/vnd.google-apps.presentation': 'slides',
+      'application/vnd.google-apps.form': 'forms',
+      'application/vnd.google-apps.folder': 'folder'
+    };
+    
+    return typeMap[mimeType] || 'drive';
+  }
+
+  // Get Drive files with enhanced metadata
   async getDriveFiles(tokens, pageSize = 50) {
     this.setCredentials(tokens);
     const drive = google.drive({ version: 'v3', auth: this.oauth2Client });
@@ -66,14 +84,40 @@ class GoogleOAuthService {
     try {
       const response = await drive.files.list({
         pageSize,
-        fields: 'nextPageToken, files(id, name, mimeType, size, webViewLink, owners, modifiedTime, createdTime)',
+        fields: 'nextPageToken, files(id, name, mimeType, size, webViewLink, owners, modifiedTime, createdTime, shared, permissions)',
         orderBy: 'modifiedTime desc'
       });
-      return response.data.files;
+      
+      // Enhance files with additional metadata
+      const enhancedFiles = response.data.files.map(file => ({
+        ...file,
+        fileType: this._getFileType(file.mimeType),
+        isShared: file.shared || (file.permissions && file.permissions.length > 1),
+        docsUrl: file.webViewLink // Store the original Google Docs URL
+      }));
+      
+      return enhancedFiles;
     } catch (error) {
       console.error('Error getting Drive files:', error);
       throw new Error('Failed to fetch Drive files');
     }
+  }
+
+  // Helper function to parse email strings
+  _parseEmailString(emailString) {
+    if (!emailString) {
+      return { name: '', email: '' };
+    }
+    
+    const parsed = addressparser(emailString);
+    
+    if (parsed && parsed.length > 0) {
+      // Return the first parsed address. The library returns 'address' for the email part.
+      return { name: parsed[0].name, email: parsed[0].address };
+    }
+    
+    // Fallback for any unexpected cases
+    return { name: '', email: emailString };
   }
 
   // Get Gmail messages
@@ -99,8 +143,7 @@ class GoogleOAuthService {
           const detail = await gmail.users.messages.get({
             userId: 'me',
             id: msg.id,
-            format: 'metadata',
-            metadataHeaders: ['From', 'To', 'Subject', 'Date']
+            format: 'full', // Change to 'full' to get attachments
           });
 
           const headers = detail.data.payload.headers;
@@ -114,17 +157,86 @@ class GoogleOAuthService {
           const isUnread = labels.includes('UNREAD');
           const isImportant = labels.includes('IMPORTANT');
 
+          // Extract Drive attachments and Google Docs links
+          const attachments = [];
+          const parts = detail.data.payload.parts || [detail.data.payload];
+          
+          for (const part of parts) {
+            if (part.mimeType === 'text/plain' && part.body && part.body.data) {
+              const bodyText = Buffer.from(part.body.data, 'base64').toString('utf-8');
+              
+              // Enhanced regex patterns for different Google file types
+              const patterns = {
+                drive: /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/g,
+                docs: /https:\/\/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/g,
+                sheets: /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/g,
+                slides: /https:\/\/docs\.google\.com\/presentation\/d\/([a-zA-Z0-9_-]+)/g,
+                forms: /https:\/\/docs\.google\.com\/forms\/d\/([a-zA-Z0-9_-]+)/g
+              };
+
+              // Extract all types of Google file links
+              for (const [type, pattern] of Object.entries(patterns)) {
+                const matches = bodyText.match(pattern) || [];
+                for (const link of matches) {
+                  const fileId = link.split('/d/')[1].split('/')[0];
+                  attachments.push({
+                    type: type,
+                    fileId: fileId,
+                    url: link
+                  });
+                }
+              }
+            }
+            
+            // Also check HTML parts for links
+            if (part.mimeType === 'text/html' && part.body && part.body.data) {
+              const htmlText = Buffer.from(part.body.data, 'base64').toString('utf-8');
+              
+              // Extract Google file links from HTML
+              const patterns = {
+                drive: /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/g,
+                docs: /https:\/\/docs\.google\.com\/document\/d\/([a-zA-Z0-9_-]+)/g,
+                sheets: /https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/g,
+                slides: /https:\/\/docs\.google\.com\/presentation\/d\/([a-zA-Z0-9_-]+)/g,
+                forms: /https:\/\/docs\.google\.com\/forms\/d\/([a-zA-Z0-9_-]+)/g
+              };
+
+              for (const [type, pattern] of Object.entries(patterns)) {
+                const matches = htmlText.match(pattern) || [];
+                for (const link of matches) {
+                  const fileId = link.split('/d/')[1].split('/')[0];
+                  // Avoid duplicates
+                  if (!attachments.some(att => att.fileId === fileId)) {
+                    attachments.push({
+                      type: type,
+                      fileId: fileId,
+                      url: link
+                    });
+                  }
+                }
+              }
+            }
+          }
+
+          const senderInfo = this._parseEmailString(getHeader('From'));
+          const recipientInfo = this._parseEmailString(getHeader('To'));
+
           return {
             id: msg.id,
             threadId: msg.threadId,
             subject: getHeader('Subject'),
             sender: getHeader('From'),
             recipient: getHeader('To'),
+            senderName: senderInfo.name,
+            senderEmail: senderInfo.email,
+            recipientName: recipientInfo.name,
+            recipientEmail: recipientInfo.email,
             date: getHeader('Date'),
             receivedAt: new Date(parseInt(detail.data.internalDate)),
             snippet,
             isUnread,
-            isImportant
+            isImportant,
+            attachments
           };
         })
       );
@@ -135,6 +247,8 @@ class GoogleOAuthService {
       throw new Error('Failed to fetch Gmail messages');
     }
   }
+
+
 
   // Refresh access token
   async refreshAccessToken(refreshToken) {

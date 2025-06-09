@@ -29,6 +29,8 @@ router.post('/sync',
   asyncHandler(controllers.drive.syncFiles)
 );
 
+
+
 // TODO: Implement deleteFile controller in functional approach
 // DELETE /api/drive/files/:fileId - Delete a file from database
 // router.delete('/files/:fileId',

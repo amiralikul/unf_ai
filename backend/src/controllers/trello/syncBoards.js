@@ -16,122 +16,117 @@ export const syncBoardsController = (trelloService, prisma) => async (req, res) 
   const userId = req.user.userId;
 
   try {
-    // Get Trello credentials from environment (for now)
-    const trelloApiKey = process.env.TRELLO_API_KEY;
-    const trelloToken = process.env.TRELLO_TOKEN;
-
-    if (!trelloApiKey || !trelloToken) {
-      throw new AuthenticationError('Trello API credentials not configured', 'TRELLO_AUTH_REQUIRED');
+    // Get Trello credentials from user profile
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { 
+        trello_api_key: true,
+        trello_token: true
+      }
+    });
+    
+    if (!user || !user.trello_api_key || !user.trello_token) {
+      throw new AuthenticationError('Trello API credentials not configured for this user', 'TRELLO_AUTH_REQUIRED');
     }
 
     // Fetch boards from Trello
-    let trelloBoards;
+    let trelloBoards, trelloLists;
     try {
-      trelloBoards = await trelloService.getBoards(trelloApiKey, trelloToken);
+      trelloBoards = await trelloService.getBoards(user.trello_api_key, user.trello_token);
+      
+      // Also fetch all lists for all boards to get status info
+      trelloLists = await Promise.all(
+        trelloBoards.map(board => 
+          trelloService.getBoardLists(user.trello_api_key, user.trello_token, board.id)
+        )
+      );
+      trelloLists = trelloLists.flat();
+
     } catch (error) {
       throw new ExternalServiceError('Trello', error.message, error);
     }
 
-    // Save/update boards and cards in database with transaction
+    // Create a map of list IDs to list names
+    const listMap = trelloLists.reduce((acc, list) => {
+      acc[list.id] = list.name;
+      return acc;
+    }, {});
+
+    // Save/update boards and their cards in a single transaction
     const syncResults = await prisma.$transaction(async (tx) => {
       const results = {
-        boards: {
-          total: trelloBoards.length,
-          created: 0,
-          updated: 0,
-          failed: 0
-        },
-        cards: {
-          total: 0,
-          created: 0,
-          updated: 0,
-          failed: 0
-        }
+        boards: { created: 0, updated: 0, failed: 0, total: trelloBoards.length },
+        cards: { created: 0, updated: 0, failed: 0, total: 0 }
       };
       
-      // Process each board
       for (const board of trelloBoards) {
         try {
-          // Check if board exists
-          const existingBoard = await tx.trelloBoard.findUnique({
-            where: { trelloId: board.id }
-          });
-          
-          // Save or update board
+          // Upsert board
+          const existingBoard = await tx.trelloBoard.findUnique({ where: { trello_id: board.id } });
           const savedBoard = await tx.trelloBoard.upsert({
-            where: { trelloId: board.id },
+            where: { trello_id: board.id },
             update: {
               name: board.name,
               url: board.url,
             },
             create: {
-              trelloId: board.id,
+              trello_id: board.id,
               name: board.name,
               url: board.url,
-              userId: userId,
+              user_id: userId,
             },
           });
-          
-          if (existingBoard) {
-            results.boards.updated++;
-          } else {
-            results.boards.created++;
-          }
-          
-          // Fetch cards for this board
-          let boardCards;
-          try {
-            boardCards = await trelloService.getBoardCards(board.id, trelloApiKey, trelloToken);
-            results.cards.total += boardCards.length;
-          } catch (cardError) {
-            console.warn(`Failed to fetch cards for board ${board.id}:`, cardError.message);
-            continue; // Skip to next board
-          }
-          
-          // Process each card
-          for (const card of boardCards) {
+
+          if (existingBoard) results.boards.updated++;
+          else results.boards.created++;
+
+          // Fetch and upsert cards for this board
+          const cards = await trelloService.getCardsForBoard(user.trello_api_key, user.trello_token, board.id);
+          results.cards.total += cards.length;
+
+          for (const card of cards) {
             try {
-              const existingCard = await tx.trelloCard.findUnique({
-                where: { trelloId: card.id }
-              });
+              const existingCard = await tx.trelloCard.findUnique({ where: { trello_id: card.id } });
               
               await tx.trelloCard.upsert({
-                where: { trelloId: card.id },
+                where: { trello_id: card.id },
                 update: {
                   name: card.name,
                   description: card.desc,
                   url: card.url,
-                  dueDate: card.due ? new Date(card.due) : null,
-                  closed: card.closed
+                  list_name: listMap[card.idList] || 'Unknown',
+                  list_id: card.idList,
+                  status: trelloService.mapListNameToStatus(listMap[card.idList] || 'Unknown'),
+                  priority: trelloService.extractPriorityFromLabels(card.labels),
+                  position: card.pos,
+                  due_date: card.due ? new Date(card.due) : null,
                 },
                 create: {
-                  trelloId: card.id,
+                  trello_id: card.id,
                   name: card.name,
                   description: card.desc,
                   url: card.url,
-                  dueDate: card.due ? new Date(card.due) : null,
-                  closed: card.closed,
-                  userId,
-                  board: {
-                    connect: {
-                      id: savedBoard.id
-                    }
-                  }
+                  list_name: listMap[card.idList] || 'Unknown',
+                  list_id: card.idList,
+                  status: trelloService.mapListNameToStatus(listMap[card.idList] || 'Unknown'),
+                  priority: trelloService.extractPriorityFromLabels(card.labels),
+                  position: card.pos,
+                  due_date: card.due ? new Date(card.due) : null,
+                  board_id: savedBoard.id,
+                  user_id: userId,
                 },
               });
-              
-              if (existingCard) {
-                results.cards.updated++;
-              } else {
-                results.cards.created++;
-              }
-            } catch (cardDbError) {
-              console.warn(`Failed to save card ${card.id}:`, cardDbError.message);
+
+              if (existingCard) results.cards.updated++;
+              else results.cards.created++;
+
+            } catch (cardError) {
+              console.warn(`Failed to sync card ${card.id}:`, cardError.message);
               results.cards.failed++;
             }
           }
-        } catch (boardDbError) {
-          console.warn(`Failed to save board ${board.id}:`, boardDbError.message);
+        } catch (boardError) {
+          console.warn(`Failed to sync board ${board.id}:`, boardError.message);
           results.boards.failed++;
         }
       }

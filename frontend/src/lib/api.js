@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { toCamelCase } from './utils';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
@@ -33,7 +34,7 @@ apiClient.interceptors.response.use(
     if (typeof data === 'object' && data !== null && 'success' in data) {
       if (data.success) {
         // Return both data and meta for successful responses
-        const result = data.data || data;
+        const result = toCamelCase(data.data || data);
         // If there's pagination metadata, include it in the result
         if (data.meta && Object.keys(data.meta).length > 0) {
           return {
@@ -52,7 +53,7 @@ apiClient.interceptors.response.use(
     }
 
     // Fallback for legacy responses
-    return data;
+    return toCamelCase(data);
   },
   async (error) => {
     console.error('API Error:', error.response?.data || error.message);
@@ -175,25 +176,6 @@ export const api = {
   syncTrelloData: () => apiClient.post('/api/trello/sync'),
 
   // AI queries
-  queryAI: (query, options = {}) => {
-    const payload = {
-      query,
-      context: options.context || 'all',
-      includeFiles: options.includeFiles !== false,
-      includeEmails: options.includeEmails !== false,
-      includeCards: options.includeCards !== false,
-    };
-    return apiClient.post('/api/ai/query', payload);
-  },
-  getAIHistory: (params = {}) => {
-    const searchParams = new URLSearchParams();
-    if (params.page) searchParams.set('page', params.page.toString());
-    if (params.limit) searchParams.set('limit', params.limit.toString());
-
-    const url = `/api/ai/history${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
-    return apiClient.get(url);
-  },
-  getAIStats: () => apiClient.get('/api/ai/stats'),
   
   // NL to SQL queries (powered by LangChain)
   queryNLToSQL: (question) => {

@@ -24,8 +24,8 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
     // Verify board exists and belongs to user
     const board = await prisma.trelloBoard.findFirst({
       where: {
-        trelloId: boardId,
-        userId
+        trello_id: boardId,
+        user_id: userId
       }
     });
 
@@ -88,27 +88,27 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
           const priority = trelloService.extractPriorityFromLabels(card.labels);
           
           const savedCard = await tx.trelloCard.upsert({
-            where: { trelloId: card.id },
+            where: { trello_id: card.id },
             update: {
               name: card.name,
               description: card.desc,
               url: card.url,
-              dueDate: card.due ? new Date(card.due) : null,
+              due_date: card.due ? new Date(card.due) : null,
               status: listInfo.status,
               priority: priority,
               position: card.pos,
-              listId: card.idList
+              list_id: card.idList
             },
             create: {
-              trelloId: card.id,
+              trello_id: card.id,
               name: card.name,
               description: card.desc,
               url: card.url,
-              dueDate: card.due ? new Date(card.due) : null,
+              due_date: card.due ? new Date(card.due) : null,
               status: listInfo.status,
               priority: priority,
               position: card.pos,
-              listId: card.idList,
+              list_id: card.idList,
               board: {
                 connect: {
                   id: board.id
@@ -133,8 +133,8 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
 
     // Build database query filters
     const whereClause = { 
-      boardId: board.id,
-      userId
+      board_id: board.id,
+      user_id: userId
     };
     
     // Add filter logic (search is handled separately with raw SQL)
@@ -142,18 +142,18 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
       // Show cards created in the last 30 days
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      whereClause.createdAt = { gte: thirtyDaysAgo };
+      whereClause.created_at = { gte: thirtyDaysAgo };
     } else if (filter === 'due-soon') {
       // Show cards with due dates in the next 7 days
       const nextWeek = new Date();
       nextWeek.setDate(nextWeek.getDate() + 7);
-      whereClause.dueDate = {
+      whereClause.due_date = {
         gte: new Date(),
         lte: nextWeek
       };
     } else if (filter === 'overdue') {
       // Show cards with past due dates
-      whereClause.dueDate = {
+      whereClause.due_date = {
         lt: new Date()
       };
     } else if (filter && filter !== 'all') {
@@ -170,89 +170,28 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
       whereClause.status = targetStatus;
     }
 
-    // Get paginated results from database
-    let cards, total;
-    
+    // Add search filter if provided
     if (search) {
-      // For search queries, use raw SQL to support case-insensitive search in SQLite
-      const searchPattern = `%${search.toLowerCase()}%`;
-      const baseWhereConditions = [];
-      const baseParams = [];
-      
-      // Add base conditions
-      baseWhereConditions.push('boardId = ?');
-      baseParams.push(board.id);
-      baseWhereConditions.push('userId = ?');
-      baseParams.push(userId);
-      
-      // Add filter conditions if any
-      if (filter && filter !== 'all') {
-        if (filter === 'recent') {
-          const thirtyDaysAgo = new Date();
-          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-          baseWhereConditions.push('createdAt >= ?');
-          baseParams.push(thirtyDaysAgo.toISOString());
-        } else if (filter === 'due-soon') {
-          const nextWeek = new Date();
-          nextWeek.setDate(nextWeek.getDate() + 7);
-          baseWhereConditions.push('dueDate >= ? AND dueDate <= ?');
-          baseParams.push(new Date().toISOString(), nextWeek.toISOString());
-        } else if (filter === 'overdue') {
-          baseWhereConditions.push('dueDate < ?');
-          baseParams.push(new Date().toISOString());
-        } else {
-          // Handle both legacy filter values and direct status filtering
-          const statusMap = {
-            'todo': 'To Do',
-            'inprogress': 'In Progress', 
-            'review': 'Review',
-            'done': 'Done'
-          };
-          
-          // Use mapped status if it's a legacy filter, otherwise treat as direct status value
-          const targetStatus = statusMap[filter] || filter;
-          baseWhereConditions.push('status = ?');
-          baseParams.push(targetStatus);
-        }
-      }
-      
-      const baseWhere = baseWhereConditions.join(' AND ');
-      
-      // Build search query with case-insensitive LIKE
-      const searchQuery = `
-        SELECT * FROM TrelloCard 
-        WHERE ${baseWhere} AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ?)
-        ORDER BY status ASC, position ASC, name ASC
-        LIMIT ? OFFSET ?
-      `;
-      
-      const countQuery = `
-        SELECT COUNT(*) as count FROM TrelloCard 
-        WHERE ${baseWhere} AND (LOWER(name) LIKE ? OR LOWER(description) LIKE ?)
-      `;
-      
-      const searchParams = [...baseParams, searchPattern, searchPattern];
-      
-      [cards, total] = await Promise.all([
-        prisma.$queryRawUnsafe(searchQuery, ...searchParams, pagination.limit, pagination.skip),
-        prisma.$queryRawUnsafe(countQuery, ...searchParams).then(result => Number(result[0].count))
-      ]);
-    } else {
-      // For non-search queries, use regular Prisma queries
-      [cards, total] = await Promise.all([
-        prisma.trelloCard.findMany({
-          where: whereClause,
-          skip: pagination.skip,
-          take: pagination.limit,
-          orderBy: [
-            { status: 'asc' },
-            { position: 'asc' },
-            { name: 'asc' }
-          ]
-        }),
-        prisma.trelloCard.count({ where: whereClause })
-      ]);
+      whereClause.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } }
+      ];
     }
+    
+    // Get paginated results from database
+    const [cards, total] = await Promise.all([
+      prisma.trelloCard.findMany({
+        where: whereClause,
+        skip: pagination.skip,
+        take: pagination.limit,
+        orderBy: [
+          { status: 'asc' },
+          { position: 'asc' },
+          { name: 'asc' }
+        ]
+      }),
+      prisma.trelloCard.count({ where: whereClause })
+    ]);
 
     // Calculate pagination metadata
     const paginationMeta = getPaginationMeta(total, pagination.page, pagination.limit);
@@ -260,7 +199,7 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
     // Transform response to match frontend expectations
     const transformedCards = cards.map(card => ({
       ...card,
-      id: card.trelloId, // Frontend expects 'id' field
+      id: card.trello_id, // Frontend expects 'id' field
       boardId: boardId,
       boardName: board.name
     }));
@@ -270,7 +209,7 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
       { 
         cards: transformedCards,
         board: {
-          id: board.trelloId,
+          id: board.trello_id,
           name: board.name,
           url: board.url
         },

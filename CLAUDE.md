@@ -13,8 +13,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `pnpm --filter=./backend dev` - Start backend only (http://localhost:3000)
 - `pnpm --filter=./backend test` - Run backend Jest tests
 - `pnpm --filter=./backend prisma:generate` - Generate Prisma client after schema changes
-- `pnpm --filter=./backend prisma:push` - Push schema changes to SQLite database
+- `pnpm --filter=./backend prisma:push` - Push schema changes to PostgreSQL database
 - `pnpm --filter=./backend prisma:studio` - Open Prisma Studio database GUI
+- `pnpm --filter=./backend prisma migrate dev` - Create and apply new migration
 
 ### Frontend-specific
 - `pnpm --filter=./frontend dev` - Start frontend only (http://localhost:5173)
@@ -26,13 +27,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Monorepo Structure
 This is a pnpm workspace with three packages:
 - Root: Orchestrates development with concurrently
-- `backend/`: Node.js Express API with Prisma + SQLite
+- `backend/`: Node.js Express API with Prisma + PostgreSQL
 - `frontend/`: React + Vite SPA with shadcn/ui components
 
 ### Backend Architecture (Express + Prisma)
 - **Controllers**: Functional controllers using dependency injection pattern in `src/controllers/`
 - **Services**: External API integrations (Google OAuth, Trello) in `src/services/`
-- **Database**: SQLite with Prisma ORM, schema in `prisma/schema.prisma`
+- **Database**: PostgreSQL with Prisma ORM, schema in `prisma/schema.prisma`
 - **Authentication**: Session-based auth with HTTP-only cookies, no JWT
 - **API Pattern**: RESTful endpoints with standardized `{success, data, meta}` responses
 
@@ -46,7 +47,7 @@ This is a pnpm workspace with three packages:
 ### Key Integration Points
 - **Google APIs**: Drive (file metadata), Gmail (message metadata) with OAuth 2.0
 - **Trello API**: Board and card sync with API key authentication
-- **OpenAI**: AI query processing with chat completions
+- **OpenAI & LangChain**: Advanced NL-to-SQL queries with LangChain integration
 - **Session Management**: Database-backed sessions, 24-hour expiration
 
 ## Data Model Patterns

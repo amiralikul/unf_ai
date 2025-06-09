@@ -20,19 +20,19 @@ export const syncMessagesController = (googleOAuth, prisma) => async (req, res) 
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { 
-        googleAccessToken: true,
-        googleRefreshToken: true
+        google_access_token: true,
+        google_refresh_token: true
       }
     });
     
-    if (!user || !user.googleAccessToken) {
+    if (!user || !user.google_access_token) {
       throw new AuthenticationError('Gmail authentication required', 'GMAIL_AUTH_REQUIRED');
     }
     
     // Create tokens object
     const tokens = {
-      access_token: user.googleAccessToken,
-      refresh_token: user.googleRefreshToken
+      access_token: user.google_access_token,
+      refresh_token: user.google_refresh_token
     };
     
     // Fetch messages from Gmail using the service
@@ -77,36 +77,73 @@ export const syncMessagesController = (googleOAuth, prisma) => async (req, res) 
           
           // Check if message exists
           const existingMessage = await tx.email.findUnique({
-            where: { googleId: message.id }
+            where: { google_id: message.id }
           });
           
           // Save or update message
           const savedMessage = await tx.email.upsert({
-            where: { googleId: message.id },
+            where: { google_id: message.id },
             update: {
               subject,
               sender: from,
               recipient: to,
+              sender_name: message.senderName,
+              sender_email: message.senderEmail,
+              recipient_name: message.recipientName,
+              recipient_email: message.recipientEmail,
               snippet,
-              receivedAt,
-              isRead: !isUnread,
-              isImportant
+              received_at: receivedAt,
+              is_read: !isUnread,
+              is_important: isImportant
             },
             create: {
-              googleId: message.id,
+              google_id: message.id,
               subject,
               sender: from,
               recipient: to,
+              sender_name: message.senderName,
+              sender_email: message.senderEmail,
+              recipient_name: message.recipientName,
+              recipient_email: message.recipientEmail,
               snippet,
-              receivedAt,
-              isRead: !isUnread,
-              isImportant,
-              userId
+              received_at: receivedAt,
+              is_read: !isUnread,
+              is_important: isImportant,
+              user_id: userId
             },
           });
           
-          // Skip label processing for now as we don't have label data
-          // from the getGmailMessages method
+          // Process attachments (enhanced for all Google file types)
+          if (message.attachments && message.attachments.length > 0) {
+            for (const attachment of message.attachments) {
+              if (attachment.fileId) {
+                // Find the corresponding file in the database
+                const file = await tx.file.findUnique({
+                  where: { google_id: attachment.fileId },
+                });
+
+                if (file) {
+                  // Create the link in the join table
+                  await tx.emailFileLink.upsert({
+                    where: {
+                      email_id_file_id: {
+                        email_id: savedMessage.id,
+                        file_id: file.id,
+                      },
+                    },
+                    update: {},
+                    create: {
+                      email_id: savedMessage.id,
+                      file_id: file.id,
+                    },
+                  });
+                } else {
+                  // Log missing files for potential future sync
+                  console.log(`File not found in database: ${attachment.fileId} (${attachment.type})`);
+                }
+              }
+            }
+          }
           
           if (existingMessage) {
             results.updated++;

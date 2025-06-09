@@ -20,19 +20,19 @@ export const syncFilesController = (googleOAuth, prisma) => async (req, res) => 
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { 
-        googleAccessToken: true,
-        googleRefreshToken: true
+        google_access_token: true,
+        google_refresh_token: true
       }
     });
     
-    if (!user || !user.googleAccessToken) {
+    if (!user || !user.google_access_token) {
       throw new AuthenticationError('Google Drive authentication required', 'GOOGLE_AUTH_REQUIRED');
     }
     
     // Create tokens object
     const tokens = {
-      access_token: user.googleAccessToken,
-      refresh_token: user.googleRefreshToken
+      access_token: user.google_access_token,
+      refresh_token: user.google_refresh_token
     };
 
     // Fetch files from Google Drive using the service
@@ -67,29 +67,35 @@ export const syncFilesController = (googleOAuth, prisma) => async (req, res) => 
         try {
           // Check if file exists
           const existingFile = await tx.file.findUnique({
-            where: { googleId: file.id }
+            where: { google_id: file.id }
           });
           
-          // Save or update file
+          // Save or update file with enhanced metadata
           await tx.file.upsert({
-            where: { googleId: file.id },
+            where: { google_id: file.id },
             update: {
               name: file.name,
-              mimeType: file.mimeType,
-              size: parseInt(file.size) || 0,
-              modifiedAt: new Date(file.modifiedTime),
-              webViewLink: file.webViewLink,
-              owners: JSON.stringify(file.owners || [])
+              mime_type: file.mimeType,
+              size: file.size ? BigInt(file.size) : null,
+              modified_at: new Date(file.modifiedTime),
+              web_view_link: file.webViewLink,
+              owners: file.owners || [],
+              file_type: file.fileType || 'drive',
+              docs_url: file.docsUrl,
+              is_shared: file.isShared || false
             },
             create: {
-              googleId: file.id,
+              google_id: file.id,
               name: file.name,
-              mimeType: file.mimeType,
-              size: parseInt(file.size) || 0,
-              modifiedAt: new Date(file.modifiedTime),
-              webViewLink: file.webViewLink,
-              owners: JSON.stringify(file.owners || []),
-              userId
+              mime_type: file.mimeType,
+              size: file.size ? BigInt(file.size) : null,
+              modified_at: new Date(file.modifiedTime),
+              web_view_link: file.webViewLink,
+              owners: file.owners || [],
+              file_type: file.fileType || 'drive',
+              docs_url: file.docsUrl,
+              is_shared: file.isShared || false,
+              user_id: userId
             },
           });
           

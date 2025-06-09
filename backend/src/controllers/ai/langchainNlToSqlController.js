@@ -61,6 +61,16 @@ export const langchainNlToSqlController = (openai, prisma) => async (req, res) =
         // Don't fail the request if logging fails
       }
 
+      // Convert BigInts in results to strings for JSON serialization
+      const processedResults = (sqlResult.results || []).map(row =>
+        Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [
+            key,
+            typeof value === 'bigint' ? value.toString() : value,
+          ])
+        )
+      );
+
       // Return successful response
       sendSuccess(res, {
         question,
@@ -68,7 +78,8 @@ export const langchainNlToSqlController = (openai, prisma) => async (req, res) =
         sql: {
           query: sqlResult.sql,
           explanation: sqlResult.explanation,
-          resultCount: sqlResult.resultCount
+          resultCount: sqlResult.resultCount,
+          results: processedResults,
         },
         method: 'langchain',
         timestamp: new Date().toISOString()

@@ -73,8 +73,8 @@ router.get('/google/callback', async (req, res) => {
         data: {
           email: userInfo.email,
           name: userInfo.name,
-          googleAccessToken: tokens.access_token,
-          googleRefreshToken: tokens.refresh_token,
+          google_access_token: tokens.access_token,
+          google_refresh_token: tokens.refresh_token,
         }
       });
     } else {
@@ -82,8 +82,8 @@ router.get('/google/callback', async (req, res) => {
       user = await prisma.user.update({
         where: { id: user.id },
         data: {
-          googleAccessToken: tokens.access_token,
-          googleRefreshToken: tokens.refresh_token,
+          google_access_token: tokens.access_token,
+          google_refresh_token: tokens.refresh_token,
         }
       });
     }
@@ -140,8 +140,8 @@ router.get('/status', async (req, res) => {
         id: true,
         email: true,
         name: true,
-        createdAt: true,
-        updatedAt: true
+        created_at: true,
+        updated_at: true
       }
     });
 

@@ -43,7 +43,11 @@ describe('getMessages controller', () => {
         googleId: 'msg1',
         subject: 'Test Email 1',
         sender: 'sender1@example.com',
+        senderName: 'Sender One',
+        senderEmail: 'sender1@example.com',
         recipient: 'recipient@example.com',
+        recipientName: 'Recipient',
+        recipientEmail: 'recipient@example.com',
         snippet: 'This is a test email',
         receivedAt: new Date('2025-06-01'),
         isRead: true,
@@ -54,7 +58,11 @@ describe('getMessages controller', () => {
         googleId: 'msg2',
         subject: 'Test Email 2',
         sender: 'sender2@example.com',
+        senderName: 'Sender Two',
+        senderEmail: 'sender2@example.com',
         recipient: 'recipient@example.com',
+        recipientName: 'Recipient',
+        recipientEmail: 'recipient@example.com',
         snippet: 'Another test email',
         receivedAt: new Date('2025-06-02'),
         isRead: false,
@@ -131,7 +139,8 @@ describe('getMessages controller', () => {
         OR: [
           { subject: { contains: 'important', mode: 'insensitive' } },
           { body: { contains: 'important', mode: 'insensitive' } },
-          { sender: { contains: 'important', mode: 'insensitive' } }
+          { senderName: { contains: 'important', mode: 'insensitive' } },
+          { senderEmail: { contains: 'important', mode: 'insensitive' } }
         ]
       })
     }));
