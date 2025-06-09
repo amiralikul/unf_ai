@@ -63,7 +63,7 @@ export default function TrelloView() {
   const { user } = useAuth()
   
   // Use URL-based pagination
-  const { pagination } = useUrlPagination({ page: 1, limit: 10 })
+  const { pagination, reset: resetPagination } = useUrlPagination({ page: 1, limit: 10 })
   
   // Check if user has Trello credentials configured
   const hasTrelloCredentials = user?.hasTrelloCredentials
@@ -95,8 +95,9 @@ export default function TrelloView() {
   useEffect(() => {
     if (!selectedBoardId && boardsData?.boards?.[0]) {
       setSelectedBoardId(boardsData.boards[0].id)
+      resetPagination() // Reset to page 1 when auto-selecting first board
     }
-  }, [boardsData, selectedBoardId])
+  }, [boardsData, selectedBoardId, resetPagination])
 
 
   
@@ -164,7 +165,13 @@ export default function TrelloView() {
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <CardTitle className="text-lg md:text-xl">Trello</CardTitle>
             {boardsData?.boards?.length > 0 && (
-              <Select value={selectedBoardId} onValueChange={setSelectedBoardId}>
+              <Select 
+                value={selectedBoardId} 
+                onValueChange={(newBoardId) => {
+                  setSelectedBoardId(newBoardId)
+                  resetPagination() // Reset to page 1 when changing boards
+                }}
+              >
                 <SelectTrigger className="w-full sm:w-[200px]">
                   <SelectValue placeholder="Select Board" />
                 </SelectTrigger>
