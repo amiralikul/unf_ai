@@ -7,18 +7,10 @@ import { Plus, Filter, SortAsc, RefreshCw, AlertCircle } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
-  PaginationPrevious,
-  PaginationEllipsis
-} from "@/components/ui/pagination"
+import { UrlPagination } from "@/components/ui/url-pagination"
 import { useTrelloBoards, useSyncTrelloData } from "@/hooks/useTrelloBoards"
 import { useTrelloCardsWithPagination, useSyncTrelloCards } from "@/hooks/useTrelloCards"
-import { usePagination } from "@/hooks/usePagination"
+import { useUrlPagination } from "@/hooks/useUrlPagination"
 import { useAuth } from "@/hooks/useAuth"
 import { TrelloCredentialsSetup } from "./TrelloCredentialsSetup"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
@@ -71,13 +63,8 @@ export default function TrelloView() {
   const [statusFilter, setStatusFilter] = useState("all")
   const { user } = useAuth()
   
-  // Initialize pagination hook
-  const paginationHook = usePagination({
-    initialPage: 1,
-    initialLimit: 10,
-    total: 0,
-    totalPages: null
-  })
+  // Use URL-based pagination
+  const { pagination } = useUrlPagination({ page: 1, limit: 10 })
   
   // Check if user has Trello credentials configured
   const hasTrelloCredentials = user?.hasTrelloCredentials
@@ -97,17 +84,9 @@ export default function TrelloView() {
     isError: isCardsError, 
     error: cardsError 
   } = useTrelloCardsWithPagination(selectedBoardId, {
-    page: paginationHook.page,
-    limit: paginationHook.limit,
+    page: pagination.page,
+    limit: pagination.limit,
     filter: statusFilter !== "all" ? statusFilter : undefined
-  })
-  
-  // Update pagination when we have data
-  const currentPagination = usePagination({
-    initialPage: paginationHook.page,
-    initialLimit: paginationHook.limit,
-    total: cardsData?.pagination?.total || 0,
-    totalPages: cardsData?.pagination?.totalPages || null
   })
   
   // Sync mutations
@@ -387,65 +366,12 @@ export default function TrelloView() {
               
               {/* Pagination */}
               {cardsData?.pagination && (
-                <div className="mt-4 w-full">
-                  <div className="flex flex-col items-center space-y-2">
-                    <Pagination className="w-full">
-                      <PaginationContent className="flex-wrap justify-center gap-1">
-                        <PaginationItem>
-                          <PaginationPrevious 
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              paginationHook.prevPage();
-                            }}
-                            className={currentPagination.pagination.isFirstPage ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                        
-                        {currentPagination.getPageNumbers().map((pageNum, index) => {
-                          if (pageNum === 'ellipsis') {
-                            return (
-                              <PaginationItem key={`ellipsis-${index}`} className="hidden sm:block">
-                                <PaginationEllipsis />
-                              </PaginationItem>
-                            )
-                          }
-                          
-                          return (
-                            <PaginationItem key={pageNum}>
-                              <PaginationLink 
-                                href="#"
-                                isActive={currentPagination.page === pageNum}
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  paginationHook.goToPage(pageNum);
-                                }}
-                                className="cursor-pointer text-xs sm:text-sm"
-                              >
-                                {pageNum}
-                              </PaginationLink>
-                            </PaginationItem>
-                          )
-                        })}
-                        
-                        <PaginationItem>
-                          <PaginationNext 
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              paginationHook.nextPage();
-                            }}
-                            className={currentPagination.pagination.isLastPage ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                          />
-                        </PaginationItem>
-                      </PaginationContent>
-                    </Pagination>
-                    
-                    <div className="text-xs sm:text-sm text-muted-foreground text-center">
-                      Showing {currentPagination.pagination.startItem} to {currentPagination.pagination.endItem} of {currentPagination.pagination.total} cards
-                    </div>
-                  </div>
-                </div>
+                <UrlPagination 
+                  total={cardsData.pagination.total}
+                  totalPages={cardsData.pagination.totalPages}
+                  className="mt-4"
+                  itemLabel="cards"
+                />
               )}
             </div>
           )}

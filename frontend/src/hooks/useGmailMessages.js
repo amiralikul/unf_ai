@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { queryKeys } from '@/lib/queryClient';
 import { useAuth } from '@/hooks/useAuth';
+import { useUrlPagination } from '@/hooks/useUrlPagination';
+import React from 'react';
 
 export const useGmailMessages = (params = {}) => {
   const { isAuthenticated, authData } = useAuth();
@@ -15,6 +17,23 @@ export const useGmailMessages = (params = {}) => {
     staleTime: 1 * 60 * 1000, // 1 minute for email data
     enabled: isAuthenticated, // Only fetch when authenticated
   });
+};
+
+export const useGmailMessagesWithPagination = (defaults = { page: 1, limit: 10 }) => {
+  const { isAuthenticated } = useAuth();
+  const { pagination } = useUrlPagination(defaults);
+
+  const query = useQuery({
+    queryKey: [...queryKeys.gmailMessages, pagination],
+    queryFn: () => api.getGmailMessages(pagination),
+    staleTime: 1 * 60 * 1000,
+    enabled: isAuthenticated,
+  });
+
+  return {
+    ...query,
+    pagination: query.data?.pagination || { total: 0, totalPages: 0, page: pagination.page, limit: pagination.limit }
+  };
 };
 
 export const useGmailMessage = (id) => {

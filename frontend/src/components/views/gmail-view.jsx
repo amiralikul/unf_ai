@@ -4,48 +4,21 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { RefreshCw, Archive, Trash2, AlertCircle } from "lucide-react"
-import { useGmailMessages, useSyncGmailMessages } from "@/hooks/useGmailMessages"
-import { usePagination } from "@/hooks/usePagination"
+import { useGmailMessagesWithPagination, useSyncGmailMessages } from "@/hooks/useGmailMessages"
 import { Skeleton } from "@/components/ui/skeleton"
-import { 
-  Pagination, 
-  PaginationContent, 
-  PaginationItem, 
-  PaginationLink, 
-  PaginationNext, 
-  PaginationPrevious,
-  PaginationEllipsis
-} from "@/components/ui/pagination"
+import { UrlPagination } from "@/components/ui/url-pagination"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
 
 export default function GmailView() {
   
-  // Initialize pagination hook with default values
-  const paginationHook = usePagination({
-    initialPage: 1,
-    initialLimit: 10,
-    total: 0,
-    totalPages: null
-  })
-  
-  // Fetch Gmail messages with React Query
+  // Fetch Gmail messages with built-in pagination
   const { 
     data, 
     isLoading, 
     isError, 
-    error 
-  } = useGmailMessages({ 
-    page: paginationHook.page, 
-    limit: paginationHook.limit
-  })
-  
-  // Update pagination hook when we have data
-  const currentPagination = usePagination({
-    initialPage: paginationHook.page,
-    initialLimit: paginationHook.limit,
-    total: data?.pagination?.total || 0,
-    totalPages: data?.pagination?.totalPages || null
-  })
+    error,
+    pagination
+  } = useGmailMessagesWithPagination()
   
   // Sync mutation
   const { 
@@ -244,67 +217,12 @@ export default function GmailView() {
           )}
           
           {data?.pagination && (
-            <div className="mt-4 w-full">
-              <div className="flex flex-col items-center space-y-2">
-                <Pagination className="w-full">
-                  <PaginationContent className="flex-wrap justify-center gap-1">
-                    <PaginationItem>
-                      <PaginationPrevious 
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          paginationHook.prevPage();
-                        }}
-                        className={currentPagination.pagination.isFirstPage ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                      />
-                    </PaginationItem>
-                    
-                    {/* Generate page numbers using the hook */}
-                    {currentPagination.getPageNumbers().map((pageNum, index) => {
-                      if (pageNum === 'ellipsis') {
-                        return (
-                          <PaginationItem key={`ellipsis-${index}`} className="hidden sm:block">
-                            <PaginationEllipsis />
-                          </PaginationItem>
-                        )
-                      }
-                      
-                      return (
-                        <PaginationItem key={pageNum}>
-                          <PaginationLink 
-                            href="#"
-                            isActive={currentPagination.page === pageNum}
-                            onClick={(e) => {
-                              e.preventDefault();
-                              paginationHook.goToPage(pageNum);
-                            }}
-                            className="cursor-pointer text-xs sm:text-sm"
-                          >
-                            {pageNum}
-                          </PaginationLink>
-                        </PaginationItem>
-                      )
-                    })}
-                    
-                    <PaginationItem>
-                      <PaginationNext 
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          paginationHook.nextPage();
-                        }}
-                        className={currentPagination.pagination.isLastPage ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-                
-                {/* Pagination info */}
-                <div className="text-xs sm:text-sm text-muted-foreground text-center">
-                  Showing {currentPagination.pagination.startItem} to {currentPagination.pagination.endItem} of {currentPagination.pagination.total} emails
-                </div>
-              </div>
-            </div>
+            <UrlPagination 
+              total={data.pagination.total}
+              totalPages={data.pagination.totalPages}
+              className="mt-4"
+              itemLabel="emails"
+            />
           )}
         </CardContent>
       </Card>
