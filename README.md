@@ -23,6 +23,18 @@ AI-powered workspace that unifies Google Drive, Gmail, and Trello with advanced 
 
 ![Natural Language to SQL Flow](nl_to_sql_flow.png)
 
+## Screenshots
+
+### Application Interface
+
+![UI Screenshot 1](ui_1.png)
+
+![UI Screenshot 2](ui_2.png)
+
+![UI Screenshot 3](ui_3.png)
+
+![UI Screenshot 4](ui_4.png)
+
 ## Prerequisites
 
 - Node.js 18+
