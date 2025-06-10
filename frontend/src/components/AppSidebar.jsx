@@ -1,5 +1,3 @@
-"use client"
-
 import { Mail, HardDrive, Trello, MessageSquare, LogOut } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import {

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.jsx";
+import { Button } from "@/components/ui/button.jsx";
+import { Input } from "@/components/ui/input.jsx";
+import { Label } from "@/components/ui/label.jsx";
+import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import { ExternalLink, Key, CheckCircle, AlertCircle } from "lucide-react";
-import { api } from '@/lib/api';
+import { api } from '@/lib/api.js';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 export function TrelloCredentialsSetup({ onSuccess }) {

@@ -1,19 +1,19 @@
 import React from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx"
+import { Badge } from "@/components/ui/badge.jsx"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx"
+import { Button } from "@/components/ui/button.jsx"
 import { File, FileText, Folder, ImageIcon, MoreHorizontal, RefreshCw, AlertCircle, Eye, Edit3, Trash2 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useDriveFiles, useSyncDriveFiles, useUpdateDriveFile, useDeleteDriveFile } from "@/hooks/useDriveFiles"
-import { useUrlPagination } from "@/hooks/useUrlPagination"
-import { Skeleton } from "@/components/ui/skeleton"
-import { UrlPagination } from "@/components/ui/url-pagination"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu.jsx"
+import { useDriveFiles, useSyncDriveFiles, useUpdateDriveFile, useDeleteDriveFile } from "@/hooks/useDriveFiles.js"
+import { useUrlPagination } from "@/hooks/useUrlPagination.js"
+import { Skeleton } from "@/components/ui/skeleton.jsx"
+import { UrlPagination } from "@/components/ui/url-pagination.jsx"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import ViewFileDialog from "@/components/dialogs/ViewFileDialog"
-import EditFileDialog from "@/components/dialogs/EditFileDialog"
-import ConfirmDialog from "@/components/ui/confirm-dialog"
+import { Alert, AlertDescription } from "@/components/ui/alert.jsx"
+import ViewFileDialog from "@/components/dialogs/ViewFileDialog.jsx"
+import EditFileDialog from "@/components/dialogs/EditFileDialog.jsx"
+import ConfirmDialog from "@/components/ui/confirm-dialog.jsx"
 
 const getFileIcon = (mimeType) => {
   if (mimeType?.includes('folder')) {
@@ -56,7 +56,7 @@ const formatDate = (dateString) => {
   }
 }
 
-export default function DriveView() {
+export default function DrivePage() {
   
   // Use URL-based pagination - single source of truth
   const { pagination } = useUrlPagination({ page: 1, limit: 10 })

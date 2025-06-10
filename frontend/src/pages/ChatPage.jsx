@@ -1,11 +1,11 @@
 import { useState } from "react"
 import { format } from "date-fns"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Button } from "@/components/ui/button.jsx"
+import { Textarea } from "@/components/ui/textarea.jsx"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.jsx"
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card.jsx"
+import { ScrollArea } from "@/components/ui/scroll-area.jsx"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible.jsx"
 import {
   SendHorizontal,
   Settings,
@@ -13,8 +13,8 @@ import {
   Code,
   Zap
 } from "lucide-react"
-import { useNLToSQL } from "@/hooks/useAI"
-import { useAutoScroll } from "@/hooks/useAutoScroll"
+import { useNLToSQL } from "@/hooks/useAI.js"
+import { useAutoScroll } from "@/hooks/useAutoScroll.js"
 import {
   Table,
   TableBody,
@@ -22,10 +22,10 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table.jsx"
 import "@/assets/custom-scrollbar.css"
 
-export default function ChatView() {
+export default function ChatPage() {
   const [messages, setMessages] = useState([
     {
       id: "1",

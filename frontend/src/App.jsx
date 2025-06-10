@@ -1,13 +1,13 @@
 import { Routes, Route, Navigate, useLocation } from "react-router-dom"
-import { AppSidebar } from "@/components/app-sidebar"
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
-import GmailView from "@/components/views/gmail-view"
-import DriveView from "@/components/views/drive-view"
-import TrelloView from "@/components/views/trello-view"
-import ChatView from "@/components/views/chat-view"
-import ProtectedRoute from "@/components/ProtectedRoute"
-import LoginPage from "@/pages/LoginPage"
-import AuthCallback from "@/components/AuthCallback"
+import { AppSidebar } from "@/components/AppSidebar.jsx"
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar.jsx"
+import GmailPage from "@/pages/GmailPage.jsx"
+import DrivePage from "@/pages/DrivePage.jsx"
+import TrelloPage from "@/pages/TrelloPage.jsx"
+import ChatPage from "@/pages/ChatPage.jsx"
+import ProtectedRoute from "@/components/ProtectedRoute.jsx"
+import LoginPage from "@/pages/LoginPage.jsx"
+import AuthCallback from "@/components/AuthCallback.jsx"
 
 export default function App() {
   const location = useLocation()
@@ -28,10 +28,10 @@ export default function App() {
                 <div className="h-full w-full overflow-auto">
                   <Routes>
                     <Route path="/" element={<Navigate to="/gmail" replace />} />
-                    <Route path="/gmail" element={<GmailView />} />
-                    <Route path="/drive" element={<DriveView />} />
-                    <Route path="/trello" element={<TrelloView />} />
-                    <Route path="/chat" element={<ChatView />} />
+                    <Route path="/gmail" element={<GmailPage />} />
+                    <Route path="/drive" element={<DrivePage />} />
+                    <Route path="/trello" element={<TrelloPage />} />
+                    <Route path="/chat" element={<ChatPage />} />
                   </Routes>
                 </div>
               </SidebarInset>

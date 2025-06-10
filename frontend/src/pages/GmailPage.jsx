@@ -1,19 +1,19 @@
 import React from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx"
+import { Badge } from "@/components/ui/badge.jsx"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx"
+import { Button } from "@/components/ui/button.jsx"
 import { RefreshCw, AlertCircle, MoreHorizontal, Eye, Edit3, Trash2 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useGmailMessagesWithPagination, useSyncGmailMessages, useUpdateGmailMessage, useDeleteGmailMessage } from "@/hooks/useGmailMessages"
-import { Skeleton } from "@/components/ui/skeleton"
-import { UrlPagination } from "@/components/ui/url-pagination"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu.jsx"
+import { useGmailMessagesWithPagination, useSyncGmailMessages, useUpdateGmailMessage, useDeleteGmailMessage } from "@/hooks/useGmailMessages.js"
+import { Skeleton } from "@/components/ui/skeleton.jsx"
+import { UrlPagination } from "@/components/ui/url-pagination.jsx"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
-import ViewMessageDialog from "@/components/dialogs/ViewMessageDialog"
-import EditMessageDialog from "@/components/dialogs/EditMessageDialog"
-import ConfirmDialog from "@/components/ui/confirm-dialog"
+import ViewMessageDialog from "@/components/dialogs/ViewMessageDialog.jsx"
+import EditMessageDialog from "@/components/dialogs/EditMessageDialog.jsx"
+import ConfirmDialog from "@/components/ui/confirm-dialog.jsx"
 
-export default function GmailView() {
+export default function GmailPage() {
   
   // Fetch Gmail messages with built-in pagination
   const { 

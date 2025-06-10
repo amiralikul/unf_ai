@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx"
+import { Badge } from "@/components/ui/badge.jsx"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx"
+import { Button } from "@/components/ui/button.jsx"
 import { RefreshCw, AlertCircle, MoreHorizontal, Eye, Edit3, Trash2 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { UrlPagination } from "@/components/ui/url-pagination"
-import { useTrelloBoards, useSyncTrelloData } from "@/hooks/useTrelloBoards"
-import { useTrelloCardsWithPagination, useSyncTrelloCards, useUpdateTrelloCard, useDeleteTrelloCard } from "@/hooks/useTrelloCards"
-import { useUrlPagination } from "@/hooks/useUrlPagination"
-import { useAuth } from "@/hooks/useAuth"
-import { TrelloCredentialsSetup } from "./TrelloCredentialsSetup"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu.jsx"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select.jsx"
+import { Skeleton } from "@/components/ui/skeleton.jsx"
+import { Alert, AlertDescription } from "@/components/ui/alert.jsx"
+import { UrlPagination } from "@/components/ui/url-pagination.jsx"
+import { useTrelloBoards, useSyncTrelloData } from "@/hooks/useTrelloBoards.js"
+import { useTrelloCardsWithPagination, useSyncTrelloCards, useUpdateTrelloCard, useDeleteTrelloCard } from "@/hooks/useTrelloCards.js"
+import { useUrlPagination } from "@/hooks/useUrlPagination.js"
+import { useAuth } from "@/hooks/useAuth.js"
+import { TrelloCredentialsSetup } from "../components/TrelloCredentialsSetup.jsx"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
-import ViewTrelloCardDialog from "@/components/dialogs/ViewTrelloCardDialog"
-import EditTrelloCardDialog from "@/components/dialogs/EditTrelloCardDialog"
-import ConfirmDialog from "@/components/ui/confirm-dialog"
+import ViewTrelloCardDialog from "@/components/dialogs/ViewTrelloCardDialog.jsx"
+import EditTrelloCardDialog from "@/components/dialogs/EditTrelloCardDialog.jsx"
+import ConfirmDialog from "@/components/ui/confirm-dialog.jsx"
 
 const getStatusBadge = (status, listName) => {
   // Use the actual list name if available, otherwise fall back to status
@@ -62,7 +62,7 @@ const formatDate = (dateString) => {
   }
 }
 
-export default function TrelloView() {
+export default function TrelloPage() {
   const [selectedBoardId, setSelectedBoardId] = useState(null)
   const { user } = useAuth()
   
