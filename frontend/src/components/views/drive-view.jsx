@@ -3,14 +3,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { File, FileText, Folder, ImageIcon, Upload, FolderPlus, MoreHorizontal, RefreshCw, AlertCircle } from "lucide-react"
+import { File, FileText, Folder, ImageIcon, MoreHorizontal, RefreshCw, AlertCircle, Eye, Edit3, Trash2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { useDriveFiles, useSyncDriveFiles } from "@/hooks/useDriveFiles"
+import { useDriveFiles, useSyncDriveFiles, useUpdateDriveFile, useDeleteDriveFile } from "@/hooks/useDriveFiles"
 import { useUrlPagination } from "@/hooks/useUrlPagination"
 import { Skeleton } from "@/components/ui/skeleton"
 import { UrlPagination } from "@/components/ui/url-pagination"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import ViewFileDialog from "@/components/dialogs/ViewFileDialog"
+import EditFileDialog from "@/components/dialogs/EditFileDialog"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 
 const getFileIcon = (mimeType) => {
   if (mimeType?.includes('folder')) {
@@ -66,36 +69,85 @@ export default function DriveView() {
     error 
   } = useDriveFiles(pagination)
   
-  // Sync mutation
+  // Mutations
   const { 
     mutate: syncFiles, 
     isPending: isSyncing 
   } = useSyncDriveFiles()
+  
+  const { 
+    mutate: updateFile, 
+    isPending: isUpdating 
+  } = useUpdateDriveFile()
+  
+  const { 
+    mutate: deleteFile, 
+    isPending: isDeleting 
+  } = useDeleteDriveFile()
+  
+  // Dialog states
+  const [viewDialog, setViewDialog] = React.useState({ open: false, file: null })
+  const [editDialog, setEditDialog] = React.useState({ open: false, file: null })
+  const [deleteDialog, setDeleteDialog] = React.useState({ open: false, file: null })
   
   // Handle refresh
   const handleRefresh = () => {
     syncFiles()
   }
   
+  // Handle file actions
+  const handleViewFile = (file) => {
+    setViewDialog({ open: true, file })
+  }
+  
+  const handleEditFile = (file) => {
+    setEditDialog({ open: true, file })
+  }
+  
+  const handleDeleteFile = (file) => {
+    setDeleteDialog({ open: true, file })
+  }
+  
+  const handleSaveFile = (fileData) => {
+    updateFile(
+      { id: fileData.id, data: { name: fileData.name } },
+      {
+        onSuccess: () => {
+          setEditDialog({ open: false, file: null })
+        },
+        onError: (error) => {
+          console.error('Failed to update file:', error)
+          // Keep dialog open on error so user can retry
+        }
+      }
+    )
+  }
+  
+  const handleConfirmDelete = () => {
+    if (deleteDialog.file) {
+      deleteFile(deleteDialog.file.id, {
+        onSuccess: () => {
+          setDeleteDialog({ open: false, file: null })
+        },
+        onError: (error) => {
+          console.error('Failed to delete file:', error)
+          // Keep dialog open on error so user can retry
+        }
+      })
+    }
+  }
+  
   // Handle file action
   const handleFileAction = (action, file) => {
     switch (action) {
-      case 'download':
-        if (file.webViewLink) {
-          window.open(file.webViewLink, '_blank')
-        }
+      case 'view':
+        handleViewFile(file)
         break
       case 'rename':
-        // TODO: Implement rename functionality
-        console.log('Rename file:', file)
-        break
-      case 'share':
-        // TODO: Implement share functionality
-        console.log('Share file:', file)
+        handleEditFile(file)
         break
       case 'delete':
-        // TODO: Implement delete functionality
-        console.log('Delete file:', file)
+        handleDeleteFile(file)
         break
       default:
         break
@@ -171,14 +223,6 @@ export default function DriveView() {
             >
               <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button className="shrink-0">
-              <Upload className="mr-2 h-4 w-4" />
-              Upload
-            </Button>
-            <Button variant="outline" className="shrink-0">
-              <FolderPlus className="mr-2 h-4 w-4" />
-              New Folder
-            </Button>
           </div>
 
           {files.length === 0 ? (
@@ -235,22 +279,25 @@ export default function DriveView() {
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
+                                <Button variant="ghost" size="icon" className="cursor-pointer">
                                   <MoreHorizontal className="h-4 w-4" />
                                   <span className="sr-only">Actions</span>
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleFileAction('download', file)}>
-                                  Open
+                                <DropdownMenuItem onClick={() => handleFileAction('view', file)} className="cursor-pointer">
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleFileAction('rename', file)}>
-                                  Rename
+                                <DropdownMenuItem onClick={() => handleFileAction('rename', file)} className="cursor-pointer">
+                                  <Edit3 className="mr-2 h-4 w-4" />
+                                  Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleFileAction('share', file)}>
-                                  Share
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleFileAction('delete', file)}>
+                                <DropdownMenuItem 
+                                  onClick={() => handleFileAction('delete', file)}
+                                  className="text-destructive focus:text-destructive cursor-pointer"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
                                   Delete
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -294,22 +341,25 @@ export default function DriveView() {
                           </Badge>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                              <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer">
                                 <MoreHorizontal className="h-3 w-3" />
                                 <span className="sr-only">Actions</span>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleFileAction('download', file)}>
-                                Open
+                              <DropdownMenuItem onClick={() => handleFileAction('view', file)} className="cursor-pointer">
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleFileAction('rename', file)}>
-                                Rename
+                              <DropdownMenuItem onClick={() => handleFileAction('rename', file)} className="cursor-pointer">
+                                <Edit3 className="mr-2 h-4 w-4" />
+                                Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleFileAction('share', file)}>
-                                Share
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleFileAction('delete', file)}>
+                              <DropdownMenuItem 
+                                onClick={() => handleFileAction('delete', file)}
+                                className="text-destructive focus:text-destructive cursor-pointer"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
                                 Delete
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -339,6 +389,35 @@ export default function DriveView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      <ViewFileDialog
+        open={viewDialog.open}
+        onOpenChange={(open) => setViewDialog({ open, file: open ? viewDialog.file : null })}
+        file={viewDialog.file}
+        onEdit={handleEditFile}
+        onDelete={handleDeleteFile}
+      />
+
+      <EditFileDialog
+        open={editDialog.open}
+        onOpenChange={(open) => setEditDialog({ open, file: open ? editDialog.file : null })}
+        file={editDialog.file}
+        onSave={handleSaveFile}
+        loading={isUpdating}
+      />
+
+      <ConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, file: open ? deleteDialog.file : null })}
+        title="Delete File"
+        description={`Are you sure you want to delete "${deleteDialog.file?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        destructive={true}
+        onConfirm={handleConfirmDelete}
+        loading={isDeleting}
+      />
     </div>
   );
 }

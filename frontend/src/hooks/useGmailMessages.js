@@ -58,6 +58,25 @@ export const useGmailThreads = (params = {}) => {
   });
 };
 
+export const useUpdateGmailMessage = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }) => api.updateGmailMessage(id, data),
+    onSuccess: (data, variables) => {
+      // Invalidate and refetch gmail messages
+      queryClient.invalidateQueries({ queryKey: queryKeys.gmailMessages });
+      // Also invalidate the specific message query
+      queryClient.invalidateQueries({ queryKey: ['gmail', 'message', variables.id] });
+      // Also invalidate threads as they might be affected
+      queryClient.invalidateQueries({ queryKey: ['gmail', 'threads'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update gmail message:', error);
+    },
+  });
+};
+
 export const useDeleteGmailMessage = () => {
   const queryClient = useQueryClient();
 

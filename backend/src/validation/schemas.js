@@ -19,12 +19,28 @@ export const driveFilesQuerySchema = z.object({
   modifiedBefore: z.string().datetime().optional(),
 });
 
+export const updateFileSchema = z.object({
+  name: z.string().min(1, 'File name is required').max(255, 'File name too long'),
+});
+
+export const fileIdParamSchema = z.object({
+  fileId: z.string().min(1, 'File ID is required'),
+});
+
 // Gmail schemas
 export const gmailMessagesQuerySchema = z.object({
   ...paginationSchema.shape,
   search: z.string().optional(),
   labelIds: z.array(z.string()).optional(),
   includeSpamTrash: z.boolean().default(false),
+});
+
+export const messageIdParamSchema = z.object({
+  messageId: z.string().min(1, 'Message ID is required'),
+});
+
+export const updateMessageSchema = z.object({
+  subject: z.string().max(255, 'Subject too long').optional(),
 });
 
 // Trello schemas
@@ -41,6 +57,18 @@ export const trelloCardsQuerySchema = z.object({
 
 export const trelloBoardParamSchema = z.object({
   boardId: z.string().min(1, 'Board ID is required'),
+});
+
+export const trelloCardParamSchema = z.object({
+  cardId: z.string().min(1, 'Card ID is required'),
+});
+
+export const updateTrelloCardSchema = z.object({
+  name: z.string().min(1, 'Card name is required').max(255, 'Card name too long').optional(),
+  description: z.string().max(2000, 'Description too long').optional(),
+  status: z.string().max(100, 'Status too long').optional(),
+  priority: z.enum(['Low', 'Medium', 'High']).optional().nullable(),
+  dueDate: z.string().datetime().optional().nullable(),
 });
 
 // AI schemas

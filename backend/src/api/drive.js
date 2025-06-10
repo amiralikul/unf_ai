@@ -1,10 +1,10 @@
 import express from 'express';
 import { requireAuth } from './auth.js';
 import controllers from '../controllers/index.js';
-import { validateQuery, validateParams } from '../middleware/validation.js';
+import { validateQuery, validateParams, validateBody } from '../middleware/validation.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import paginationMiddleware from '../middleware/pagination.js';
-import { driveFilesQuerySchema, idParamSchema } from '../validation/schemas.js';
+import { driveFilesQuerySchema, fileIdParamSchema, updateFileSchema } from '../validation/schemas.js';
 
 const router = express.Router();
 
@@ -20,7 +20,7 @@ router.get('/files',
 
 // GET /api/drive/files/:fileId - Get a specific file by ID
 router.get('/files/:fileId',
-  validateParams(idParamSchema),
+  validateParams(fileIdParamSchema),
   asyncHandler(controllers.drive.getFileById)
 );
 
@@ -29,13 +29,17 @@ router.post('/sync',
   asyncHandler(controllers.drive.syncFiles)
 );
 
+// PATCH /api/drive/files/:fileId - Update file metadata
+router.patch('/files/:fileId',
+  validateParams(fileIdParamSchema),
+  validateBody(updateFileSchema),
+  asyncHandler(controllers.drive.updateFile)
+);
 
-
-// TODO: Implement deleteFile controller in functional approach
 // DELETE /api/drive/files/:fileId - Delete a file from database
-// router.delete('/files/:fileId',
-//   validateParams(idParamSchema),
-//   asyncHandler(controllers.drive.deleteFile)
-// );
+router.delete('/files/:fileId',
+  validateParams(fileIdParamSchema),
+  asyncHandler(controllers.drive.deleteFile)
+);
 
 export default router;

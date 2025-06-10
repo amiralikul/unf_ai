@@ -1,6 +1,8 @@
 import getFilesController from './getFiles.js';
 import getFileByIdController from './getFileById.js';
 import syncFilesController from './syncFiles.js';
+import updateFileController from './updateFile.js';
+import deleteFileController from './deleteFile.js';
 
 /**
  * Factory function to create Drive controllers with dependencies
@@ -11,11 +13,15 @@ import syncFilesController from './syncFiles.js';
 export const createDriveControllers = ({ googleOAuth, prisma }) => ({
   getFiles: getFilesController(googleOAuth, prisma),
   getFileById: getFileByIdController(googleOAuth, prisma),
-  syncFiles: syncFilesController(googleOAuth, prisma)
+  syncFiles: syncFilesController(googleOAuth, prisma),
+  updateFile: updateFileController(googleOAuth, prisma),
+  deleteFile: deleteFileController(googleOAuth, prisma)
 });
 
 export {
   getFilesController,
   getFileByIdController,
-  syncFilesController
+  syncFilesController,
+  updateFileController,
+  deleteFileController
 };

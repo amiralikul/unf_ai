@@ -1,13 +1,15 @@
 import express from 'express';
 import { requireAuth } from './auth.js';
 import controllers from '../controllers/index.js';
-import { validateQuery, validateParams } from '../middleware/validation.js';
+import { validateQuery, validateParams, validateBody } from '../middleware/validation.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import paginationMiddleware from '../middleware/pagination.js';
 import { 
   trelloBoardsQuerySchema, 
   trelloCardsQuerySchema, 
-  trelloBoardParamSchema 
+  trelloBoardParamSchema,
+  trelloCardParamSchema,
+  updateTrelloCardSchema
 } from '../validation/schemas.js';
 
 const router = express.Router();
@@ -33,6 +35,19 @@ router.get('/boards/:boardId/cards',
 // POST /api/trello/sync - Sync boards and cards from Trello
 router.post('/sync',
   asyncHandler(controllers.trello.syncBoards)
+);
+
+// PATCH /api/trello/cards/:cardId - Update a Trello card
+router.patch('/cards/:cardId',
+  validateParams(trelloCardParamSchema),
+  validateBody(updateTrelloCardSchema),
+  asyncHandler(controllers.trello.updateCard)
+);
+
+// DELETE /api/trello/cards/:cardId - Delete a Trello card
+router.delete('/cards/:cardId',
+  validateParams(trelloCardParamSchema),
+  asyncHandler(controllers.trello.deleteCard)
 );
 
 // TODO: Implement getBoardById controller in functional approach

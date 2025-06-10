@@ -1,10 +1,10 @@
 import express from 'express';
 import { requireAuth } from './auth.js';
 import controllers from '../controllers/index.js';
-import { validateQuery, validateParams } from '../middleware/validation.js';
+import { validateQuery, validateParams, validateBody } from '../middleware/validation.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 import paginationMiddleware from '../middleware/pagination.js';
-import { gmailMessagesQuerySchema, idParamSchema, paginationSchema } from '../validation/schemas.js';
+import { gmailMessagesQuerySchema, messageIdParamSchema, updateMessageSchema, paginationSchema } from '../validation/schemas.js';
 
 const router = express.Router();
 
@@ -20,7 +20,7 @@ router.get('/messages',
 
 // GET /api/gmail/messages/:messageId - Get a specific message by ID
 router.get('/messages/:messageId',
-  validateParams(idParamSchema),
+  validateParams(messageIdParamSchema),
   asyncHandler(controllers.gmail.getMessageById)
 );
 
@@ -29,12 +29,18 @@ router.post('/sync',
   asyncHandler(controllers.gmail.syncMessages)
 );
 
-// TODO: Implement deleteMessage controller in functional approach
+// PATCH /api/gmail/messages/:messageId - Update message metadata
+router.patch('/messages/:messageId',
+  validateParams(messageIdParamSchema),
+  validateBody(updateMessageSchema),
+  asyncHandler(controllers.gmail.updateMessage)
+);
+
 // DELETE /api/gmail/messages/:messageId - Delete a message from database
-// router.delete('/messages/:messageId',
-//   validateParams(idParamSchema),
-//   asyncHandler(controllers.gmail.deleteMessage)
-// );
+router.delete('/messages/:messageId',
+  validateParams(messageIdParamSchema),
+  asyncHandler(controllers.gmail.deleteMessage)
+);
 
 // TODO: Implement getThreads controller in functional approach
 // GET /api/gmail/threads - Get message threads

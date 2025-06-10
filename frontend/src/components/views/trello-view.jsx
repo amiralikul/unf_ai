@@ -3,17 +3,21 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Plus, SortAsc, RefreshCw, AlertCircle } from "lucide-react"
+import { RefreshCw, AlertCircle, MoreHorizontal, Eye, Edit3, Trash2 } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { UrlPagination } from "@/components/ui/url-pagination"
 import { useTrelloBoards, useSyncTrelloData } from "@/hooks/useTrelloBoards"
-import { useTrelloCardsWithPagination, useSyncTrelloCards } from "@/hooks/useTrelloCards"
+import { useTrelloCardsWithPagination, useSyncTrelloCards, useUpdateTrelloCard, useDeleteTrelloCard } from "@/hooks/useTrelloCards"
 import { useUrlPagination } from "@/hooks/useUrlPagination"
 import { useAuth } from "@/hooks/useAuth"
 import { TrelloCredentialsSetup } from "./TrelloCredentialsSetup"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
+import ViewTrelloCardDialog from "@/components/dialogs/ViewTrelloCardDialog"
+import EditTrelloCardDialog from "@/components/dialogs/EditTrelloCardDialog"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 
 const getStatusBadge = (status, listName) => {
   // Use the actual list name if available, otherwise fall back to status
@@ -91,6 +95,15 @@ export default function TrelloView() {
   const { mutate: syncBoards, isPending: isSyncingBoards } = useSyncTrelloData()
   const { mutate: syncCards, isPending: isSyncingCards } = useSyncTrelloCards()
   
+  // CRUD mutations
+  const { mutate: updateCard, isPending: isUpdating } = useUpdateTrelloCard()
+  const { mutate: deleteCard, isPending: isDeleting } = useDeleteTrelloCard()
+  
+  // Dialog states
+  const [viewDialog, setViewDialog] = useState({ open: false, card: null })
+  const [editDialog, setEditDialog] = useState({ open: false, card: null })
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, card: null })
+  
   // Auto-select first board if none selected
   useEffect(() => {
     if (!selectedBoardId && boardsData?.boards?.[0]) {
@@ -114,6 +127,72 @@ export default function TrelloView() {
   const handleCredentialsSuccess = () => {
     // Credentials have been saved, the user data will be refreshed automatically
     // and hasTrelloCredentials will become true, hiding the setup component
+  }
+
+  // Handle card actions
+  const handleViewCard = (card) => {
+    setViewDialog({ open: true, card })
+  }
+
+  const handleEditCard = (card) => {
+    setEditDialog({ open: true, card })
+  }
+
+  const handleDeleteCard = (card) => {
+    setDeleteDialog({ open: true, card })
+  }
+
+  const handleCardAction = (action, card) => {
+    switch (action) {
+      case 'view':
+        handleViewCard(card)
+        break
+      case 'edit':
+        handleEditCard(card)
+        break
+      case 'delete':
+        handleDeleteCard(card)
+        break
+      default:
+        break
+    }
+  }
+
+  const handleSaveCard = (cardData) => {
+    updateCard(
+      { 
+        id: cardData.id, 
+        data: { 
+          name: cardData.name,
+          description: cardData.description,
+          priority: cardData.priority,
+          dueDate: cardData.dueDate
+        } 
+      },
+      {
+        onSuccess: () => {
+          setEditDialog({ open: false, card: null })
+        },
+        onError: (error) => {
+          console.error('Failed to update card:', error)
+          // Keep dialog open on error so user can retry
+        }
+      }
+    )
+  }
+
+  const handleConfirmDelete = () => {
+    if (deleteDialog.card) {
+      deleteCard(deleteDialog.card.id, {
+        onSuccess: () => {
+          setDeleteDialog({ open: false, card: null })
+        },
+        onError: (error) => {
+          console.error('Failed to delete card:', error)
+          // Keep dialog open on error so user can retry
+        }
+      })
+    }
   }
   
   // Show credentials setup if user hasn't configured Trello API credentials
@@ -204,9 +283,6 @@ export default function TrelloView() {
         <CardContent className="p-4 md:p-6">
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pb-4">
             <div className="flex items-center gap-2 justify-end sm:justify-start flex-wrap ml-auto">
-              <Button variant="outline" size="icon">
-                <SortAsc className="h-4 w-4" />
-              </Button>
               <Button 
                 variant="outline" 
                 size="icon" 
@@ -215,10 +291,6 @@ export default function TrelloView() {
                 className="shrink-0"
               >
                 <RefreshCw className={`h-4 w-4 ${(isSyncingCards || isSyncingBoards) ? 'animate-spin' : ''}`} />
-              </Button>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                New Card
               </Button>
             </div>
           </div>
@@ -262,10 +334,11 @@ export default function TrelloView() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[100px]">ID</TableHead>
-                        <TableHead className="w-[40%]">Card</TableHead>
+                        <TableHead className="w-[35%]">Card</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Priority</TableHead>
                         <TableHead>Due Date</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -283,6 +356,33 @@ export default function TrelloView() {
                           <TableCell>{getStatusBadge(card.status, listNameMap[card.status])}</TableCell>
                           <TableCell>{getPriorityBadge(card.priority)}</TableCell>
                           <TableCell>{formatDate(card.dueDate)}</TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="cursor-pointer">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Actions</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleCardAction('view', card)} className="cursor-pointer">
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleCardAction('edit', card)} className="cursor-pointer">
+                                  <Edit3 className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleCardAction('delete', card)}
+                                  className="text-destructive focus:text-destructive cursor-pointer"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -295,7 +395,7 @@ export default function TrelloView() {
                 {cards.map((card) => (
                   <Card 
                     key={card.id} 
-                    className="border-l-4 border-l-blue-500 cursor-pointer hover:shadow-md transition-shadow"
+                    className="border-l-4 border-l-blue-500 hover:shadow-md transition-shadow"
                   >
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-2">
@@ -308,6 +408,31 @@ export default function TrelloView() {
                         <div className="flex items-center gap-2 ml-2 shrink-0">
                           {getStatusBadge(card.status, listNameMap[card.status])}
                           {getPriorityBadge(card.priority)}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer">
+                                <MoreHorizontal className="h-3 w-3" />
+                                <span className="sr-only">Actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleCardAction('view', card)} className="cursor-pointer">
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleCardAction('edit', card)} className="cursor-pointer">
+                                <Edit3 className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleCardAction('delete', card)}
+                                className="text-destructive focus:text-destructive cursor-pointer"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground line-clamp-2">
@@ -331,6 +456,35 @@ export default function TrelloView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      <ViewTrelloCardDialog
+        open={viewDialog.open}
+        onOpenChange={(open) => setViewDialog({ open, card: open ? viewDialog.card : null })}
+        card={viewDialog.card}
+        onEdit={handleEditCard}
+        onDelete={handleDeleteCard}
+      />
+
+      <EditTrelloCardDialog
+        open={editDialog.open}
+        onOpenChange={(open) => setEditDialog({ open, card: open ? editDialog.card : null })}
+        card={editDialog.card}
+        onSave={handleSaveCard}
+        loading={isUpdating}
+      />
+
+      <ConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, card: open ? deleteDialog.card : null })}
+        title="Delete Trello Card"
+        description={`Are you sure you want to delete "${deleteDialog.card?.name}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        onConfirm={handleConfirmDelete}
+        loading={isDeleting}
+        variant="destructive"
+      />
     </div>
   );
 }

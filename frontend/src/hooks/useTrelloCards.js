@@ -47,3 +47,33 @@ export const useSyncTrelloCards = () => {
     },
   });
 };
+
+export const useUpdateTrelloCard = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, data }) => api.updateTrelloCard(id, data),
+    onSuccess: () => {
+      // Invalidate all trello card queries to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['trelloCards'] });
+    },
+    onError: (error) => {
+      console.error('Failed to update Trello card:', error);
+    },
+  });
+};
+
+export const useDeleteTrelloCard = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id) => api.deleteTrelloCard(id),
+    onSuccess: () => {
+      // Invalidate all trello card queries to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['trelloCards'] });
+    },
+    onError: (error) => {
+      console.error('Failed to delete Trello card:', error);
+    },
+  });
+};

@@ -3,11 +3,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { RefreshCw, Archive, Trash2, AlertCircle } from "lucide-react"
-import { useGmailMessagesWithPagination, useSyncGmailMessages } from "@/hooks/useGmailMessages"
+import { RefreshCw, AlertCircle, MoreHorizontal, Eye, Edit3, Trash2 } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useGmailMessagesWithPagination, useSyncGmailMessages, useUpdateGmailMessage, useDeleteGmailMessage } from "@/hooks/useGmailMessages"
 import { Skeleton } from "@/components/ui/skeleton"
 import { UrlPagination } from "@/components/ui/url-pagination"
 import { format, isToday, isYesterday, parseISO } from "date-fns"
+import ViewMessageDialog from "@/components/dialogs/ViewMessageDialog"
+import EditMessageDialog from "@/components/dialogs/EditMessageDialog"
+import ConfirmDialog from "@/components/ui/confirm-dialog"
 
 export default function GmailView() {
   
@@ -20,11 +24,26 @@ export default function GmailView() {
     pagination
   } = useGmailMessagesWithPagination()
   
-  // Sync mutation
+  // Mutations
   const { 
     mutate: syncEmails, 
     isPending: isSyncing 
   } = useSyncGmailMessages()
+  
+  const { 
+    mutate: updateMessage, 
+    isPending: isUpdating 
+  } = useUpdateGmailMessage()
+  
+  const { 
+    mutate: deleteMessage, 
+    isPending: isDeleting 
+  } = useDeleteGmailMessage()
+  
+  // Dialog states
+  const [viewDialog, setViewDialog] = React.useState({ open: false, message: null })
+  const [editDialog, setEditDialog] = React.useState({ open: false, message: null })
+  const [deleteDialog, setDeleteDialog] = React.useState({ open: false, message: null })
   
   // Format date for display
   const formatDate = (dateString) => {
@@ -45,6 +64,69 @@ export default function GmailView() {
   // Handle refresh
   const handleRefresh = () => {
     syncEmails()
+  }
+  
+    // Handle message actions
+  const handleViewMessage = (message) => {
+    setViewDialog({ open: true, message })
+  }
+
+  const handleEditMessage = (message) => {
+    setEditDialog({ open: true, message })
+  }
+
+  const handleDeleteMessage = (message) => {
+    setDeleteDialog({ open: true, message })
+  }
+
+  const handleMessageAction = (action, message) => {
+    switch (action) {
+      case 'view':
+        handleViewMessage(message)
+        break
+      case 'edit':
+        handleEditMessage(message)
+        break
+      case 'delete':
+        handleDeleteMessage(message)
+        break
+      default:
+        break
+    }
+  }
+
+  const handleSaveMessage = (messageData) => {
+    updateMessage(
+      { 
+        id: messageData.id, 
+        data: { 
+          subject: messageData.subject
+        } 
+      },
+      {
+        onSuccess: () => {
+          setEditDialog({ open: false, message: null })
+        },
+        onError: (error) => {
+          console.error('Failed to update message:', error)
+          // Keep dialog open on error so user can retry
+        }
+      }
+    )
+  }
+  
+  const handleConfirmDelete = () => {
+    if (deleteDialog.message) {
+      deleteMessage(deleteDialog.message.id, {
+        onSuccess: () => {
+          setDeleteDialog({ open: false, message: null })
+        },
+        onError: (error) => {
+          console.error('Failed to delete message:', error)
+          // Keep dialog open on error so user can retry
+        }
+      })
+    }
   }
   
   // Get unread count
@@ -117,12 +199,6 @@ export default function GmailView() {
             >
               <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
             </Button>
-            <Button variant="outline" size="icon" className="shrink-0">
-              <Archive className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="shrink-0">
-              <Trash2 className="h-4 w-4" />
-            </Button>
           </div>
 
           {data?.messages?.length === 0 ? (
@@ -138,15 +214,16 @@ export default function GmailView() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[20%] min-w-[140px]">Sender</TableHead>
-                        <TableHead className="w-[60%] min-w-[200px]">Subject</TableHead>
+                        <TableHead className="w-[50%] min-w-[200px]">Subject</TableHead>
                         <TableHead className="w-[20%] min-w-[100px]">Date</TableHead>
+                        <TableHead className="w-[50px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {data?.messages?.map((email) => (
                         <TableRow 
                           key={email.id} 
-                          className={email.isRead ? "" : "font-medium bg-muted/30"}
+                          className={`${email.isRead ? "" : "font-medium bg-muted/30"} hover:bg-muted/50`}
                         >
                           <TableCell className="truncate pr-2">
                             <div className="truncate" title={`${email.fromName || ''} <${email.from}>`}>
@@ -175,6 +252,33 @@ export default function GmailView() {
                               {formatDate(email.receivedAt)}
                             </div>
                           </TableCell>
+                          <TableCell>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="cursor-pointer">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                  <span className="sr-only">Actions</span>
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handleMessageAction('view', email)} className="cursor-pointer">
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handleMessageAction('edit', email)} className="cursor-pointer">
+                                  <Edit3 className="mr-2 h-4 w-4" />
+                                  Edit
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  onClick={() => handleMessageAction('delete', email)}
+                                  className="text-destructive focus:text-destructive cursor-pointer"
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -187,7 +291,7 @@ export default function GmailView() {
                 {data?.messages?.map((email) => (
                   <Card 
                     key={email.id} 
-                    className={`${email.isRead ? "" : "border-l-4 border-l-blue-500"} cursor-pointer hover:shadow-md transition-shadow`}
+                    className={`${email.isRead ? "" : "border-l-4 border-l-blue-500"} hover:shadow-md transition-shadow`}
                   >
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-2">
@@ -197,11 +301,38 @@ export default function GmailView() {
                           </p>
                           <p className="text-xs text-muted-foreground">{formatDate(email.receivedAt)}</p>
                         </div>
-                        {email.isImportant && (
-                          <Badge variant="secondary" className="text-xs ml-2 shrink-0">
-                            Important
-                          </Badge>
-                        )}
+                        <div className="flex items-center gap-2 ml-2 shrink-0">
+                          {email.isImportant && (
+                            <Badge variant="secondary" className="text-xs">
+                              Important
+                            </Badge>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer">
+                                <MoreHorizontal className="h-3 w-3" />
+                                <span className="sr-only">Actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleMessageAction('view', email)} className="cursor-pointer">
+                                <Eye className="mr-2 h-4 w-4" />
+                                View Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleMessageAction('edit', email)} className="cursor-pointer">
+                                <Edit3 className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleMessageAction('delete', email)}
+                                className="text-destructive focus:text-destructive cursor-pointer"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </div>
                       <h4 className={`text-sm mb-1 ${email.isRead ? "font-normal" : "font-semibold"}`}>
                         {email.subject}
@@ -226,6 +357,36 @@ export default function GmailView() {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialogs */}
+      <ViewMessageDialog
+        open={viewDialog.open}
+        onOpenChange={(open) => setViewDialog({ open, message: open ? viewDialog.message : null })}
+        message={viewDialog.message}
+        onEdit={handleEditMessage}
+        onDelete={handleDeleteMessage}
+      />
+
+      {/* Edit Message Dialog */}
+      <EditMessageDialog
+        open={editDialog.open}
+        onOpenChange={(open) => setEditDialog({ open, message: open ? editDialog.message : null })}
+        message={editDialog.message}
+        onSave={handleSaveMessage}
+        loading={isUpdating}
+      />
+
+      <ConfirmDialog
+        open={deleteDialog.open}
+        onOpenChange={(open) => setDeleteDialog({ open, message: open ? deleteDialog.message : null })}
+        title="Delete Message"
+        description={`Are you sure you want to delete the message "${deleteDialog.message?.subject || '(No Subject)'}"? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        destructive={true}
+        onConfirm={handleConfirmDelete}
+        loading={isDeleting}
+      />
     </div>
   );
 }

@@ -1,6 +1,8 @@
 import getMessagesController from './getMessages.js';
 import getMessageByIdController from './getMessageById.js';
 import syncMessagesController from './syncMessages.js';
+import updateMessageController from './updateMessage.js';
+import deleteMessageController from './deleteMessage.js';
 
 /**
  * Factory function to create Gmail controllers with dependencies
@@ -11,11 +13,15 @@ import syncMessagesController from './syncMessages.js';
 export const createGmailControllers = ({ googleOAuth, prisma }) => ({
   getMessages: getMessagesController(googleOAuth, prisma),
   getMessageById: getMessageByIdController(googleOAuth, prisma),
-  syncMessages: syncMessagesController(googleOAuth, prisma)
+  syncMessages: syncMessagesController(googleOAuth, prisma),
+  updateMessage: updateMessageController(googleOAuth, prisma),
+  deleteMessage: deleteMessageController(googleOAuth, prisma)
 });
 
 export {
   getMessagesController,
   getMessageByIdController,
-  syncMessagesController
+  syncMessagesController,
+  updateMessageController,
+  deleteMessageController
 };

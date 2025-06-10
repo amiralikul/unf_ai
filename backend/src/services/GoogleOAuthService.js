@@ -11,9 +11,8 @@ class GoogleOAuthService {
 
     // Scopes for Drive, Gmail, and Google Docs access
     this.scopes = [
-      'https://www.googleapis.com/auth/drive.readonly',
-      'https://www.googleapis.com/auth/drive.metadata.readonly',
-      'https://www.googleapis.com/auth/gmail.readonly',
+      'https://www.googleapis.com/auth/drive',              // Full Drive access (read/write)
+      'https://mail.google.com/',                           // Full Gmail access (required for delete operations)
       'https://www.googleapis.com/auth/documents.readonly',
       'https://www.googleapis.com/auth/spreadsheets.readonly',
       'https://www.googleapis.com/auth/presentations.readonly',
@@ -249,7 +248,111 @@ class GoogleOAuthService {
     }
   }
 
+  // Delete Gmail message
+  async deleteGmailMessage(tokens, messageId) {
+    this.setCredentials(tokens);
+    const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
 
+    try {
+      await gmail.users.messages.delete({
+        userId: 'me',
+        id: messageId
+      });
+
+      return { success: true, messageId };
+    } catch (error) {
+      console.error('Error deleting Gmail message:', error);
+      throw new Error(`Failed to delete Gmail message: ${error.message}`);
+    }
+  }
+
+  // Update Gmail message labels (for read/important status)
+  async updateGmailMessage(tokens, messageId, { isRead, isImportant }) {
+    this.setCredentials(tokens);
+    const gmail = google.gmail({ version: 'v1', auth: this.oauth2Client });
+
+    try {
+      const addLabelIds = [];
+      const removeLabelIds = [];
+
+      // Handle read status
+      if (isRead !== undefined) {
+        if (isRead) {
+          removeLabelIds.push('UNREAD');
+        } else {
+          addLabelIds.push('UNREAD');
+        }
+      }
+
+      // Handle important status
+      if (isImportant !== undefined) {
+        if (isImportant) {
+          addLabelIds.push('IMPORTANT');
+        } else {
+          removeLabelIds.push('IMPORTANT');
+        }
+      }
+
+      // Apply label changes if any
+      if (addLabelIds.length > 0 || removeLabelIds.length > 0) {
+        await gmail.users.messages.modify({
+          userId: 'me',
+          id: messageId,
+          requestBody: {
+            addLabelIds: addLabelIds.length > 0 ? addLabelIds : undefined,
+            removeLabelIds: removeLabelIds.length > 0 ? removeLabelIds : undefined
+          }
+        });
+      }
+
+      return { success: true, messageId };
+    } catch (error) {
+      console.error('Error updating Gmail message:', error);
+      throw new Error(`Failed to update Gmail message: ${error.message}`);
+    }
+  }
+
+  // Delete Drive file
+  async deleteDriveFile(tokens, fileId) {
+    this.setCredentials(tokens);
+    const drive = google.drive({ version: 'v3', auth: this.oauth2Client });
+
+    try {
+      await drive.files.delete({
+        fileId: fileId
+      });
+
+      return { success: true, fileId };
+    } catch (error) {
+      console.error('Error deleting Drive file:', error);
+      throw new Error(`Failed to delete Drive file: ${error.message}`);
+    }
+  }
+
+  // Update Drive file metadata
+  async updateDriveFile(tokens, fileId, updates) {
+    this.setCredentials(tokens);
+    const drive = google.drive({ version: 'v3', auth: this.oauth2Client });
+
+    try {
+      const updateData = {};
+      
+      if (updates.name) {
+        updateData.name = updates.name;
+      }
+
+      const response = await drive.files.update({
+        fileId: fileId,
+        requestBody: updateData,
+        fields: 'id, name, mimeType, modifiedTime'
+      });
+
+      return { success: true, fileId, data: response.data };
+    } catch (error) {
+      console.error('Error updating Drive file:', error);
+      throw new Error(`Failed to update Drive file: ${error.message}`);
+    }
+  }
 
   // Refresh access token
   async refreshAccessToken(refreshToken) {

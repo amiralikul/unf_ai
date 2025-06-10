@@ -142,6 +142,7 @@ export const api = {
     return apiClient.get(url);
   },
   getGmailMessage: (id) => apiClient.get(`/api/gmail/messages/${id}`),
+  updateGmailMessage: (id, data) => apiClient.patch(`/api/gmail/messages/${id}`, data),
   deleteGmailMessage: (id) => apiClient.delete(`/api/gmail/messages/${id}`),
   getGmailThreads: (params = {}) => {
     const searchParams = new URLSearchParams();
@@ -174,6 +175,8 @@ export const api = {
     const url = `/api/trello/boards/${boardId}/cards${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
     return apiClient.get(url);
   },
+  updateTrelloCard: (id, data) => apiClient.patch(`/api/trello/cards/${id}`, data),
+  deleteTrelloCard: (id) => apiClient.delete(`/api/trello/cards/${id}`),
   syncTrelloData: () => apiClient.post('/api/trello/sync'),
 
   // AI queries
