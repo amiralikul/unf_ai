@@ -1,4 +1,4 @@
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library.js';
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library.js";
 
 /**
  * Update a Trello card
@@ -12,9 +12,9 @@ export default function updateCardController(trelloService, prisma) {
       const userId = req.user.userId;
 
       // Validate card ID
-      if (!cardId || typeof cardId !== 'string') {
+      if (!cardId || typeof cardId !== "string") {
         return res.status(400).json({
-          error: 'Invalid card ID provided'
+          error: "Invalid card ID provided"
         });
       }
 
@@ -39,7 +39,7 @@ export default function updateCardController(trelloService, prisma) {
 
       if (!existingCard) {
         return res.status(404).json({
-          error: 'Trello card not found or access denied'
+          error: "Trello card not found or access denied"
         });
       }
 
@@ -67,30 +67,29 @@ export default function updateCardController(trelloService, prisma) {
       // For now, we just update our local database
 
       res.json({
-        message: 'Trello card updated successfully',
+        message: "Trello card updated successfully",
         card: updatedCard
       });
-
     } catch (error) {
-      console.error('Error updating Trello card:', error);
+      console.error("Error updating Trello card:", error);
 
       if (error instanceof PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
+        if (error.code === "P2002") {
           return res.status(409).json({
-            error: 'A card with this name already exists in the board'
+            error: "A card with this name already exists in the board"
           });
         }
-        if (error.code === 'P2025') {
+        if (error.code === "P2025") {
           return res.status(404).json({
-            error: 'Trello card not found'
+            error: "Trello card not found"
           });
         }
       }
 
       res.status(500).json({
-        error: 'Failed to update Trello card',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: "Failed to update Trello card",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined
       });
     }
   };
-} 
+}

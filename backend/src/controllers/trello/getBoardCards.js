@@ -1,15 +1,11 @@
-import { sendSuccess } from '../../utils/responses.js';
-import { getPaginationParams, getPaginationMeta } from '../../utils/pagination.js';
-import { 
-  ExternalServiceError, 
-  DatabaseError,
-  NotFoundError
-} from '../../utils/errors.js';
-import { getTrelloCredentials } from '../../utils/trelloAuth.js';
+import { sendSuccess } from "../../utils/responses.js";
+import { getPaginationParams, getPaginationMeta } from "../../utils/pagination.js";
+import { ExternalServiceError, DatabaseError, NotFoundError } from "../../utils/errors.js";
+import { getTrelloCredentials } from "../../utils/trelloAuth.js";
 
 /**
  * Get cards for a specific Trello board with pagination and filtering
- * 
+ *
  * @param {object} trelloService - Trello service instance
  * @param {object} prisma - Prisma client instance
  * @returns {function} Express route handler
@@ -30,7 +26,7 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
     });
 
     if (!board) {
-      throw new NotFoundError('Board not found or access denied', 'BOARD_NOT_FOUND');
+      throw new NotFoundError("Board not found or access denied", "BOARD_NOT_FOUND");
     }
 
     // Get Trello credentials from user profile
@@ -44,13 +40,13 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
         trelloService.getBoardLists(trello_api_key, trello_token, boardId)
       ]);
     } catch (error) {
-      throw new ExternalServiceError('Trello', error.message, error);
+      throw new ExternalServiceError("Trello", error.message, error);
     }
 
     // Create a map of list IDs to list info for status mapping
     const listMap = {};
     const sortedLists = trelloLists.sort((a, b) => a.pos - b.pos);
-    
+
     sortedLists.forEach(list => {
       const status = trelloService.mapListNameToStatus(list.name);
       listMap[list.id] = {
@@ -62,15 +58,15 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
     });
 
     // Save/update cards in database with transaction
-    const savedCards = await prisma.$transaction(async (tx) => {
+    const savedCards = await prisma.$transaction(async tx => {
       const results = [];
-      
+
       for (const card of trelloCards) {
         try {
           // Map card to enhanced data
-          const listInfo = listMap[card.idList] || { status: 'To Do' };
+          const listInfo = listMap[card.idList] || { status: "To Do" };
           const priority = trelloService.extractPriorityFromLabels(card.labels);
-          
+
           const savedCard = await tx.trelloCard.upsert({
             where: { trello_id: card.id },
             update: {
@@ -103,7 +99,7 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
                   id: userId
                 }
               }
-            },
+            }
           });
           results.push(savedCard);
         } catch (dbError) {
@@ -111,12 +107,12 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
           // Continue with other cards
         }
       }
-      
+
       return results;
     });
 
     // Build database query filters
-    const whereClause = { 
+    const whereClause = {
       board_id: board.id,
       user_id: userId
     };
@@ -124,13 +120,13 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
     // Add search filter
     if (search && search.trim()) {
       whereClause.OR = [
-        { name: { contains: search.trim(), mode: 'insensitive' } },
-        { description: { contains: search.trim(), mode: 'insensitive' } }
+        { name: { contains: search.trim(), mode: "insensitive" } },
+        { description: { contains: search.trim(), mode: "insensitive" } }
       ];
     }
 
     // Add status filter
-    if (filter && filter !== 'all') {
+    if (filter && filter !== "all") {
       whereClause.status = filter;
     }
 
@@ -140,11 +136,7 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
         where: whereClause,
         skip: pagination.skip,
         take: pagination.limit,
-        orderBy: [
-          { status: 'asc' },
-          { position: 'asc' },
-          { name: 'asc' }
-        ],
+        orderBy: [{ status: "asc" }, { position: "asc" }, { name: "asc" }],
         include: {
           file_links: {
             include: {
@@ -197,8 +189,9 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
     }));
 
     // Send response
-    sendSuccess(res, 
-      { 
+    sendSuccess(
+      res,
+      {
         cards: transformedCards,
         board: {
           id: board.trello_id,
@@ -210,16 +203,15 @@ export const getBoardCardsController = (trelloService, prisma) => async (req, re
           name: list.name,
           status: listMap[list.id].status
         }))
-      }, 
+      },
       {
         ...paginationMeta,
         synced: savedCards.length
       }
     );
-
   } catch (error) {
-    if (error.code && error.code.startsWith('P')) {
-      throw new DatabaseError('Failed to access board cards', 'getBoardCards', error);
+    if (error.code && error.code.startsWith("P")) {
+      throw new DatabaseError("Failed to access board cards", "getBoardCards", error);
     }
     throw error;
   }

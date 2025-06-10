@@ -6,44 +6,44 @@ export class LinkDetectionService {
   // Detect Trello card references in text
   extractTrelloCardReferences(text) {
     if (!text) return [];
-    
+
     const patterns = [
       /https:\/\/trello\.com\/c\/([a-zA-Z0-9]+)/g,
       /trello\.com\/c\/([a-zA-Z0-9]+)/g,
-      /#([A-Z]+-\d+)/g, // Custom card IDs if used
+      /#([A-Z]+-\d+)/g // Custom card IDs if used
     ];
-    
+
     const matches = new Set();
-    
+
     patterns.forEach(pattern => {
       let match;
       while ((match = pattern.exec(text)) !== null) {
         matches.add(match[1]);
       }
     });
-    
+
     return Array.from(matches);
   }
 
   // Detect Google Drive file references in text
   extractDriveFileReferences(text) {
     if (!text) return [];
-    
+
     const patterns = [
       /https:\/\/docs\.google\.com\/[^\/]+\/d\/([a-zA-Z0-9-_]+)/g,
       /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9-_]+)/g,
-      /https:\/\/drive\.google\.com\/open\?id=([a-zA-Z0-9-_]+)/g,
+      /https:\/\/drive\.google\.com\/open\?id=([a-zA-Z0-9-_]+)/g
     ];
-    
+
     const matches = new Set();
-    
+
     patterns.forEach(pattern => {
       let match;
       while ((match = pattern.exec(text)) !== null) {
         matches.add(match[1]);
       }
     });
-    
+
     return Array.from(matches);
   }
 
@@ -57,7 +57,7 @@ export class LinkDetectionService {
         }
       });
     } catch (error) {
-      console.error('Error finding card by Trello ID:', error);
+      console.error("Error finding card by Trello ID:", error);
       return null;
     }
   }
@@ -72,13 +72,13 @@ export class LinkDetectionService {
         }
       });
     } catch (error) {
-      console.error('Error finding file by Google ID:', error);
+      console.error("Error finding file by Google ID:", error);
       return null;
     }
   }
 
   // Create card-file links
-  async linkCardToFile(cardId, fileId, linkType = 'reference', createdBy = 'auto') {
+  async linkCardToFile(cardId, fileId, linkType = "reference", createdBy = "auto") {
     try {
       // Check if link already exists
       const existingLink = await this.prisma.trelloCardFileLink.findUnique({
@@ -108,13 +108,13 @@ export class LinkDetectionService {
       console.log(`Created link between card ${cardId} and file ${fileId} (type: ${linkType})`);
       return link;
     } catch (error) {
-      console.error('Error creating card-file link:', error);
+      console.error("Error creating card-file link:", error);
       throw error;
     }
   }
 
   // Create card-email links
-  async linkCardToEmail(cardId, emailId, linkType = 'discussion', createdBy = 'auto') {
+  async linkCardToEmail(cardId, emailId, linkType = "discussion", createdBy = "auto") {
     try {
       // Check if link already exists
       const existingLink = await this.prisma.trelloCardEmailLink.findUnique({
@@ -144,7 +144,7 @@ export class LinkDetectionService {
       console.log(`Created link between card ${cardId} and email ${emailId} (type: ${linkType})`);
       return link;
     } catch (error) {
-      console.error('Error creating card-email link:', error);
+      console.error("Error creating card-email link:", error);
       throw error;
     }
   }
@@ -164,7 +164,7 @@ export class LinkDetectionService {
         try {
           const file = await this.findFileByGoogleId(googleId, userId);
           if (file) {
-            const link = await this.linkCardToFile(cardId, file.id, 'reference');
+            const link = await this.linkCardToFile(cardId, file.id, "reference");
             results.fileLinks.push(link);
           }
         } catch (error) {
@@ -174,9 +174,8 @@ export class LinkDetectionService {
 
       // Note: Email references would need additional patterns to detect email IDs
       // This could be extended based on specific email reference formats used
-
     } catch (error) {
-      console.error('Error processing card text:', error);
+      console.error("Error processing card text:", error);
       results.errors.push(`Failed to process card text: ${error.message}`);
     }
 
@@ -197,23 +196,20 @@ export class LinkDetectionService {
         try {
           const card = await this.findCardByTrelloId(trelloId, userId);
           if (card) {
-            const link = await this.linkCardToEmail(card.id, emailId, 'discussion');
+            const link = await this.linkCardToEmail(card.id, emailId, "discussion");
             results.cardLinks.push(link);
           }
         } catch (error) {
           results.errors.push(`Failed to link card ${trelloId}: ${error.message}`);
         }
       }
-
     } catch (error) {
-      console.error('Error processing email text:', error);
+      console.error("Error processing email text:", error);
       results.errors.push(`Failed to process email text: ${error.message}`);
     }
 
     return results;
   }
-
-
 
   // Get all links for a specific card
   async getCardLinks(cardId) {
@@ -250,8 +246,8 @@ export class LinkDetectionService {
 
       return { fileLinks, emailLinks };
     } catch (error) {
-      console.error('Error getting card links:', error);
+      console.error("Error getting card links:", error);
       throw error;
     }
   }
-} 
+}

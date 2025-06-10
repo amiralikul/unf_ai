@@ -1,0 +1,10 @@
+node_modules
+backend/dist
+frontend/dist
+coverage
+*.png
+*.jpg
+*.jpeg
+*.svg
+*.gif
+pnpm-lock.yaml 

@@ -1,28 +1,28 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
-import LoginForm from '@/components/LoginForm.jsx'
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
+import LoginForm from "@/components/LoginForm.jsx";
 
 export default function LoginPage() {
-  const { isAuthenticated, isLoading } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [oauthError, setOauthError] = useState(null)
+  const { isAuthenticated, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [oauthError, setOauthError] = useState(null);
 
   useEffect(() => {
     if (!isLoading && isAuthenticated) {
-      navigate('/', { replace: true })
+      navigate("/", { replace: true });
     }
-  }, [isAuthenticated, isLoading, navigate])
+  }, [isAuthenticated, isLoading, navigate]);
 
   useEffect(() => {
     // Check for OAuth error from navigation state
     if (location.state?.error) {
-      setOauthError(location.state.error)
+      setOauthError(location.state.error);
       // Clear the error from navigation state
-      navigate('/login', { replace: true })
+      navigate("/login", { replace: true });
     }
-  }, [location.state, navigate])
+  }, [location.state, navigate]);
 
   if (isLoading) {
     return (
@@ -32,11 +32,11 @@ export default function LoginPage() {
           <span className="text-lg text-muted-foreground">Loading...</span>
         </div>
       </div>
-    )
+    );
   }
 
   if (isAuthenticated) {
-    return null // Will redirect via useEffect
+    return null; // Will redirect via useEffect
   }
 
   return (
@@ -45,5 +45,5 @@ export default function LoginPage() {
         <LoginForm oauthError={oauthError} />
       </div>
     </div>
-  )
+  );
 }

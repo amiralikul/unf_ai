@@ -1,56 +1,56 @@
-import express from 'express';
-import { services } from '../controllers/index.js';
+import express from "express";
+import { services } from "../controllers/index.js";
 
 const router = express.Router();
 
 // Middleware to check authentication
 export const requireAuth = async (req, res, next) => {
   const { sessionId } = req.cookies;
-  
+
   if (!sessionId) {
     console.log(`🔐 Auth check: no session cookie provided`);
-    return res.status(401).json({ 
-      error: 'Authentication required',
-      code: 'NO_TOKEN',
-      message: 'No authentication token provided'
+    return res.status(401).json({
+      error: "Authentication required",
+      code: "NO_TOKEN",
+      message: "No authentication token provided"
     });
   }
-  
+
   console.log(`🔐 Auth check: session=${sessionId.substring(0, 10)}...`);
-  
+
   const session = await services.sessionService.getSession(sessionId);
-  
+
   if (!session) {
     console.log(`❌ Authentication failed: invalid or expired session`);
-    return res.status(401).json({ 
-      error: 'Authentication required',
-      code: 'INVALID_SESSION',
-      message: 'Session is invalid or has expired. Please log in again.'
+    return res.status(401).json({
+      error: "Authentication required",
+      code: "INVALID_SESSION",
+      message: "Session is invalid or has expired. Please log in again."
     });
   }
-  
+
   req.user = session;
   console.log(`✅ Authenticated user: ${session.email}`);
   next();
 };
 
 // Start Google OAuth flow
-router.get('/google', (req, res) => {
+router.get("/google", (req, res) => {
   try {
     const authUrl = services.googleOAuth.getAuthUrl();
     res.json({ authUrl });
   } catch (error) {
-    console.error('Error generating auth URL:', error);
-    res.status(500).json({ error: 'Failed to generate authentication URL' });
+    console.error("Error generating auth URL:", error);
+    res.status(500).json({ error: "Failed to generate authentication URL" });
   }
 });
 
 // Handle Google OAuth callback
-router.get('/google/callback', async (req, res) => {
+router.get("/google/callback", async (req, res) => {
   const { code } = req.query;
 
   if (!code) {
-    return res.status(400).json({ error: 'Authorization code is required' });
+    return res.status(400).json({ error: "Authorization code is required" });
   }
 
   try {
@@ -59,7 +59,7 @@ router.get('/google/callback', async (req, res) => {
 
     // Get user info
     const userInfo = await services.googleOAuth.getUserInfo(tokens);
-    
+
     // Find or create user in database
     let user = await services.prisma.user.findUnique({
       where: { email: userInfo.email }
@@ -71,7 +71,7 @@ router.get('/google/callback', async (req, res) => {
           email: userInfo.email,
           name: userInfo.name,
           google_access_token: tokens.access_token,
-          google_refresh_token: tokens.refresh_token,
+          google_refresh_token: tokens.refresh_token
         }
       });
     } else {
@@ -80,7 +80,7 @@ router.get('/google/callback', async (req, res) => {
         where: { id: user.id },
         data: {
           google_access_token: tokens.access_token,
-          google_refresh_token: tokens.refresh_token,
+          google_refresh_token: tokens.refresh_token
         }
       });
     }
@@ -93,39 +93,40 @@ router.get('/google/callback', async (req, res) => {
     });
 
     // Set session cookie
-    res.cookie('sessionId', sessionId, {
+    res.cookie("sessionId", sessionId, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', // or 'strict'
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax", // or 'strict'
       maxAge: 24 * 60 * 60 * 1000 // 24 hours
     });
 
     // Redirect to frontend auth callback route
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     res.redirect(`${frontendUrl}/auth/callback?success=true`);
-
   } catch (error) {
-    console.error('OAuth callback error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    console.error("OAuth callback error:", error);
+    const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
     res.redirect(`${frontendUrl}/auth/callback?error=auth_failed`);
   }
 });
 
 // Logout
-router.post('/logout', requireAuth, async (req, res) => {
+router.post("/logout", requireAuth, async (req, res) => {
   const { sessionId } = req.cookies;
   await services.sessionService.deleteSession(sessionId);
-  res.clearCookie('sessionId');
-  res.json({ message: 'Logged out successfully' });
+  res.clearCookie("sessionId");
+  res.json({ message: "Logged out successfully" });
 });
 
 // Get authentication status and user info
-router.get('/status', async (req, res) => {
+router.get("/status", async (req, res) => {
   const { sessionId } = req.cookies;
   const session = await services.sessionService.getSession(sessionId);
-  
-  console.log(`📊 Auth status check: session=${sessionId ? sessionId.substring(0, 10) + '...' : 'none'}, valid=${!!session}`);
-  
+
+  console.log(
+    `📊 Auth status check: session=${sessionId ? sessionId.substring(0, 10) + "..." : "none"}, valid=${!!session}`
+  );
+
   if (!session) {
     return res.json({ isAuthenticated: false, user: null });
   }
@@ -147,34 +148,33 @@ router.get('/status', async (req, res) => {
     if (!user) {
       // This is a defensive check in case the user was deleted but the session wasn't.
       await services.sessionService.deleteSession(sessionId);
-      res.clearCookie('sessionId');
+      res.clearCookie("sessionId");
       return res.json({ isAuthenticated: false, user: null });
     }
 
-    res.json({ 
+    res.json({
       isAuthenticated: true,
       user: {
         ...user,
         hasTrelloCredentials: !!(user.trello_api_key && user.trello_token)
       }
     });
-
   } catch (error) {
-    console.error('Error fetching user in /status endpoint:', error);
+    console.error("Error fetching user in /status endpoint:", error);
     // If we can't fetch the user, treat them as unauthenticated.
     return res.json({ isAuthenticated: false, user: null });
   }
 });
 
 // Update Trello credentials
-router.post('/trello-credentials', requireAuth, async (req, res) => {
+router.post("/trello-credentials", requireAuth, async (req, res) => {
   const { trelloApiKey, trelloToken } = req.body;
   const userId = req.user.userId;
 
   if (!trelloApiKey || !trelloToken) {
-    return res.status(400).json({ 
-      error: 'Both Trello API key and token are required',
-      code: 'MISSING_CREDENTIALS'
+    return res.status(400).json({
+      error: "Both Trello API key and token are required",
+      code: "MISSING_CREDENTIALS"
     });
   }
 
@@ -200,20 +200,19 @@ router.post('/trello-credentials', requireAuth, async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Trello credentials updated successfully',
+      message: "Trello credentials updated successfully",
       user: {
         ...updatedUser,
         hasTrelloCredentials: true
       }
     });
-
   } catch (error) {
-    console.error('Error updating Trello credentials:', error);
+    console.error("Error updating Trello credentials:", error);
     res.status(500).json({
-      error: 'Failed to update Trello credentials',
-      code: 'UPDATE_FAILED'
+      error: "Failed to update Trello credentials",
+      code: "UPDATE_FAILED"
     });
   }
 });
 
-export default router; 
+export default router;

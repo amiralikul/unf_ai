@@ -1,7 +1,7 @@
-import { ChatOpenAI } from '@langchain/openai';
-import { PromptTemplate } from '@langchain/core/prompts';
-import { StringOutputParser } from '@langchain/core/output_parsers';
-import { RunnableSequence } from '@langchain/core/runnables';
+import { ChatOpenAI } from "@langchain/openai";
+import { PromptTemplate } from "@langchain/core/prompts";
+import { StringOutputParser } from "@langchain/core/output_parsers";
+import { RunnableSequence } from "@langchain/core/runnables";
 
 /**
  * LangChain-based SQL service for natural language to SQL conversion
@@ -15,17 +15,17 @@ export class LangChainSqlService {
     // Initialize OpenAI model
     this.llm = new ChatOpenAI({
       openAIApiKey: openaiApiKey,
-      modelName: 'gpt-4',
+      modelName: "gpt-4",
       temperature: 0.1,
-      maxTokens: 1000,
+      maxTokens: 1000
     });
 
     // Initialize lighter model for response generation
     this.responseLlm = new ChatOpenAI({
       openAIApiKey: openaiApiKey,
-      modelName: 'gpt-4o-mini',
+      modelName: "gpt-4o-mini",
       temperature: 0.7,
-      maxTokens: 800,
+      maxTokens: 800
     });
 
     this.sqlChain = null;
@@ -47,9 +47,9 @@ export class LangChainSqlService {
       this.responseChain = await this.createResponseChain();
 
       this.initialized = true;
-      console.log('LangChain SQL Service initialized successfully');
+      console.log("LangChain SQL Service initialized successfully");
     } catch (error) {
-      console.error('Failed to initialize LangChain SQL Service:', error);
+      console.error("Failed to initialize LangChain SQL Service:", error);
       throw error;
     }
   }
@@ -116,11 +116,7 @@ Generate ONLY the SQL query without any explanation or formatting:
 `);
 
     // Create a simple chain that uses the LLM with our prompt
-    const chain = RunnableSequence.from([
-      sqlPrompt,
-      this.llm,
-      new StringOutputParser(),
-    ]);
+    const chain = RunnableSequence.from([sqlPrompt, this.llm, new StringOutputParser()]);
 
     return chain;
   }
@@ -147,7 +143,7 @@ Answer:
     const chain = RunnableSequence.from([
       responsePrompt,
       this.responseLlm,
-      new StringOutputParser(),
+      new StringOutputParser()
     ]);
 
     return chain;
@@ -170,7 +166,7 @@ Answer:
       const sql = await this.sqlChain.invoke({
         question,
         userId,
-        schema,
+        schema
       });
 
       // Validate and sanitize the generated SQL
@@ -178,10 +174,10 @@ Answer:
 
       return {
         sql: validatedSql,
-        explanation: `Generated SQL query to answer: "${question}"`,
+        explanation: `Generated SQL query to answer: "${question}"`
       };
     } catch (error) {
-      console.error('Error generating SQL:', error);
+      console.error("Error generating SQL:", error);
       throw new Error(`Failed to generate SQL query: ${error.message}`);
     }
   }
@@ -204,15 +200,15 @@ Answer:
       const response = await this.responseChain.invoke({
         question,
         query: sql,
-        result: this.formatResultsForLLM(results),
+        result: this.formatResultsForLLM(results)
       });
 
       return {
         results: results,
-        response: response.trim(),
+        response: response.trim()
       };
     } catch (error) {
-      console.error('Error executing SQL or generating response:', error);
+      console.error("Error executing SQL or generating response:", error);
       throw new Error(`Failed to execute query: ${error.message}`);
     }
   }
@@ -238,10 +234,10 @@ Answer:
         results,
         response,
         explanation,
-        resultCount: Array.isArray(results) ? results.length : 1,
+        resultCount: Array.isArray(results) ? results.length : 1
       };
     } catch (error) {
-      console.error('Error in complete NL-to-SQL pipeline:', error);
+      console.error("Error in complete NL-to-SQL pipeline:", error);
       throw error;
     }
   }
@@ -255,7 +251,7 @@ Answer:
       // In the future, we could introspect the Prisma schema
       return this.getFallbackSchema();
     } catch (error) {
-      console.error('Error getting schema info:', error);
+      console.error("Error getting schema info:", error);
       return this.getFallbackSchema();
     }
   }
@@ -306,7 +302,7 @@ PostgreSQL Features:
 
     // Add safety limits
     const finalSql = this.addSafetyLimits(sql);
-    
+
     return finalSql.trim();
   }
 
@@ -314,8 +310,8 @@ PostgreSQL Features:
    * Basic validation for SQL query
    */
   performBasicValidation(sql) {
-    if (!sql || typeof sql !== 'string' || sql.trim() === '') {
-      throw new Error('Generated SQL query is empty or invalid');
+    if (!sql || typeof sql !== "string" || sql.trim() === "") {
+      throw new Error("Generated SQL query is empty or invalid");
     }
   }
 
@@ -323,7 +319,17 @@ PostgreSQL Features:
    * Check for forbidden SQL operations
    */
   checkForbiddenOperations(sql) {
-    const forbiddenKeywords = ['DROP', 'DELETE', 'INSERT', 'UPDATE', 'ALTER', 'CREATE', 'TRUNCATE', 'ATTACH', 'DETACH'];
+    const forbiddenKeywords = [
+      "DROP",
+      "DELETE",
+      "INSERT",
+      "UPDATE",
+      "ALTER",
+      "CREATE",
+      "TRUNCATE",
+      "ATTACH",
+      "DETACH"
+    ];
     const upperSql = sql.toUpperCase();
 
     for (const keyword of forbiddenKeywords) {
@@ -337,7 +343,17 @@ PostgreSQL Features:
    * Validate table access
    */
   validateTableAccess(sql) {
-    const allowedTables = ['User', 'File', 'Email', 'TrelloBoard', 'TrelloCard', 'Session', 'EmailFileLink', 'TrelloCardFileLink', 'TrelloCardEmailLink'];
+    const allowedTables = [
+      "User",
+      "File",
+      "Email",
+      "TrelloBoard",
+      "TrelloCard",
+      "Session",
+      "EmailFileLink",
+      "TrelloCardFileLink",
+      "TrelloCardEmailLink"
+    ];
 
     // Extract table names from FROM and JOIN clauses
     const tableRegex = /(?:FROM|JOIN)\s+`?"?(\w+)"?`?/gi;
@@ -350,7 +366,7 @@ PostgreSQL Features:
       }
     }
   }
-  
+
   /**
    * Ensure user data isolation
    */
@@ -361,28 +377,28 @@ PostgreSQL Features:
       // For now, we'll allow it but log a warning.
     }
   }
-  
+
   /**
    * Add safety limits to the query
    */
   addSafetyLimits(sql) {
-    if (!sql.toUpperCase().includes('LIMIT')) {
-      return sql.replace(/;?$/, ' LIMIT 1000;');
+    if (!sql.toUpperCase().includes("LIMIT")) {
+      return sql.replace(/;?$/, " LIMIT 1000;");
     }
     return sql;
   }
-  
+
   /**
    * Format results for LLM response generation, handling BigInt
    */
   formatResultsForLLM(results) {
-    if (!results) return 'No results found.';
-    if (results.length === 0) return 'No results found.';
+    if (!results) return "No results found.";
+    if (results.length === 0) return "No results found.";
 
     try {
       // Helper function to handle BigInt serialization
       const replacer = (key, value) => {
-        if (typeof value === 'bigint') {
+        if (typeof value === "bigint") {
           return value.toString();
         }
         return value;
@@ -391,41 +407,41 @@ PostgreSQL Features:
       // Convert results to string, limiting length
       const jsonString = JSON.stringify(results, replacer, 2);
       if (jsonString.length > 5000) {
-        return jsonString.substring(0, 5000) + '... (results truncated)';
+        return jsonString.substring(0, 5000) + "... (results truncated)";
       }
       return jsonString;
     } catch (error) {
-      console.error('Error formatting results for LLM:', error);
-      return 'Error formatting results.';
+      console.error("Error formatting results for LLM:", error);
+      return "Error formatting results.";
     }
   }
-  
+
   /**
    * Health check for the LangChain SQL service
    */
   async healthCheck() {
     const status = {
-      status: 'healthy',
-      llm: 'untested',
-      schema: 'untested',
+      status: "healthy",
+      llm: "untested",
+      schema: "untested"
     };
-    
+
     try {
-      await this.llm.invoke('Hello');
-      status.llm = 'ok';
-    } catch(e) {
-      status.llm = 'error';
-      status.status = 'degraded';
+      await this.llm.invoke("Hello");
+      status.llm = "ok";
+    } catch (e) {
+      status.llm = "error";
+      status.status = "degraded";
     }
-    
+
     try {
       this.getFallbackSchema();
-      status.schema = 'ok';
-    } catch(e) {
-      status.schema = 'error';
-      status.status = 'degraded';
+      status.schema = "ok";
+    } catch (e) {
+      status.schema = "error";
+      status.status = "degraded";
     }
-    
+
     return status;
   }
 }

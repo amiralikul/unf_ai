@@ -1,102 +1,101 @@
-import { useState } from "react"
-import { format } from "date-fns"
-import { Button } from "@/components/ui/button.jsx"
-import { Textarea } from "@/components/ui/textarea.jsx"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.jsx"
-import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card.jsx"
-import { ScrollArea } from "@/components/ui/scroll-area.jsx"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible.jsx"
+import { useState } from "react";
+import { format } from "date-fns";
+import { Button } from "@/components/ui/button.jsx";
+import { Textarea } from "@/components/ui/textarea.jsx";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar.jsx";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card.jsx";
+import { ScrollArea } from "@/components/ui/scroll-area.jsx";
 import {
-  SendHorizontal,
-  Settings,
-  ChevronDown,
-  Code,
-  Zap
-} from "lucide-react"
-import { useNLToSQL } from "@/hooks/useAI.js"
-import { useAutoScroll } from "@/hooks/useAutoScroll.js"
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger
+} from "@/components/ui/collapsible.jsx";
+import { SendHorizontal, Settings, ChevronDown, Code, Zap } from "lucide-react";
+import { useNLToSQL } from "@/hooks/useAI.js";
+import { useAutoScroll } from "@/hooks/useAutoScroll.js";
 import {
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableHeader,
-  TableRow,
-} from "@/components/ui/table.jsx"
-import "@/assets/custom-scrollbar.css"
+  TableRow
+} from "@/components/ui/table.jsx";
+import "@/assets/custom-scrollbar.css";
 
 export default function ChatPage() {
   const [messages, setMessages] = useState([
     {
       id: "1",
-      content: "Hello! I can help you analyze your data using natural language queries powered by LangChain. Ask me questions like 'How many files do I have?' or 'Show me my recent emails'.",
+      content:
+        "Hello! I can help you analyze your data using natural language queries powered by LangChain. Ask me questions like 'How many files do I have?' or 'Show me my recent emails'.",
       sender: "ai",
-      timestamp: new Date(),
-    },
-  ])
-  const [input, setInput] = useState("")
-  const nlToSQLMutation = useNLToSQL()
-  const isLoading = nlToSQLMutation.isPending
-  const { scrollAreaRef, scrollTargetRef, scrollToBottom } = useAutoScroll(messages)
+      timestamp: new Date()
+    }
+  ]);
+  const [input, setInput] = useState("");
+  const nlToSQLMutation = useNLToSQL();
+  const isLoading = nlToSQLMutation.isPending;
+  const { scrollAreaRef, scrollTargetRef, scrollToBottom } = useAutoScroll(messages);
 
   const handleSendMessage = async () => {
-    if (!input.trim()) return
+    if (!input.trim()) return;
 
     // Add user message
     const userMessage = {
       id: Date.now().toString(),
       content: input,
       sender: "user",
-      timestamp: new Date(),
-    }
+      timestamp: new Date()
+    };
 
-    setMessages((prev) => [...prev, userMessage])
-    const currentInput = input
-    setInput("")
+    setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
+    setInput("");
 
     try {
       // Call the NL-to-SQL API (now powered by LangChain)
-      const response = await nlToSQLMutation.mutateAsync(currentInput)
-      
+      const response = await nlToSQLMutation.mutateAsync(currentInput);
+
       const aiMessage = {
         id: Date.now().toString(),
         content: response.answer,
         sender: "ai",
         timestamp: new Date(),
-        sqlInfo: response.sql, // Store SQL info for debugging/display
-      }
+        sqlInfo: response.sql // Store SQL info for debugging/display
+      };
 
-      setMessages((prev) => [...prev, aiMessage])
+      setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
-      console.error('Failed to process query:', error)
-      
+      console.error("Failed to process query:", error);
+
       const errorMessage = {
         id: Date.now().toString(),
-        content: `Sorry, I encountered an error: ${error.response?.data?.message || error.message || 'Failed to process your query'}. Please try again.`,
+        content: `Sorry, I encountered an error: ${error.response?.data?.message || error.message || "Failed to process your query"}. Please try again.`,
         sender: "ai",
         timestamp: new Date(),
-        isError: true,
-      }
+        isError: true
+      };
 
-      setMessages((prev) => [...prev, errorMessage])
+      setMessages(prev => [...prev, errorMessage]);
     }
-  }
+  };
 
-  const handleKeyDown = (e) => {
+  const handleKeyDown = e => {
     if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
+      e.preventDefault();
+      handleSendMessage();
     }
-  }
+  };
 
   // Helper function to render SQL query results as a table
-  const renderSQLTable = (sqlInfo) => {
+  const renderSQLTable = sqlInfo => {
     if (!sqlInfo || !sqlInfo.results || sqlInfo.results.length === 0) {
-      return null
+      return null;
     }
 
-    const headers = Object.keys(sqlInfo.results[0])
-    const rows = sqlInfo.results
+    const headers = Object.keys(sqlInfo.results[0]);
+    const rows = sqlInfo.results;
 
     return (
       <div className="mt-4 rounded-lg border">
@@ -104,7 +103,7 @@ export default function ChatPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                {headers.map((header) => (
+                {headers.map(header => (
                   <TableHead key={header}>{header}</TableHead>
                 ))}
               </TableRow>
@@ -112,13 +111,13 @@ export default function ChatPage() {
             <TableBody>
               {rows.map((row, rowIndex) => (
                 <TableRow key={rowIndex}>
-                  {headers.map((header) => (
+                  {headers.map(header => (
                     <TableCell key={`${rowIndex}-${header}`}>
-                      {header.toLowerCase().includes('date') || header.toLowerCase().includes('at')
+                      {header.toLowerCase().includes("date") || header.toLowerCase().includes("at")
                         ? format(new Date(row[header]), "PPPpp")
-                        : typeof row[header] === 'object' && row[header] !== null
-                        ? JSON.stringify(row[header])
-                        : String(row[header])}
+                        : typeof row[header] === "object" && row[header] !== null
+                          ? JSON.stringify(row[header])
+                          : String(row[header])}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -127,12 +126,12 @@ export default function ChatPage() {
           </Table>
         </div>
       </div>
-    )
-  }
+    );
+  };
 
   // Helper function to render SQL info
-  const renderSQLInfo = (sqlInfo) => {
-    if (!sqlInfo) return null
+  const renderSQLInfo = sqlInfo => {
+    if (!sqlInfo) return null;
 
     return (
       <Collapsible className="mt-2">
@@ -165,8 +164,8 @@ export default function ChatPage() {
           </div>
         </CollapsibleContent>
       </Collapsible>
-    )
-  }
+    );
+  };
 
   return (
     <div className="p-6 pb-60">
@@ -188,10 +187,11 @@ export default function ChatPage() {
         <CardContent className="flex-1 p-0">
           <ScrollArea ref={scrollAreaRef} className="h-[calc(100vh-450px)] px-4">
             <div className="space-y-4 pt-4">
-              {messages.map((message) => (
+              {messages.map(message => (
                 <div
                   key={message.id}
-                  className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}>
+                  className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
+                >
                   <div
                     className={`flex max-w-[90%] items-start gap-3 rounded-lg p-4 ${
                       message.sender === "user"
@@ -199,7 +199,8 @@ export default function ChatPage() {
                         : message.isError
                           ? "bg-red-50 border border-red-200"
                           : "bg-muted"
-                    }`}>
+                    }`}
+                  >
                     {message.sender === "ai" && (
                       <Avatar className="h-8 w-8 shrink-0">
                         <AvatarImage src="/placeholder.svg?height=32&width=32" />
@@ -208,14 +209,14 @@ export default function ChatPage() {
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm">{message.content}</p>
-                      
+
                       {/* Render SQL results table */}
                       {message.sqlInfo && renderSQLTable(message.sqlInfo)}
 
                       <p className="mt-1 text-xs opacity-70">
                         {message.timestamp.toLocaleTimeString([], {
                           hour: "2-digit",
-                          minute: "2-digit",
+                          minute: "2-digit"
                         })}
                       </p>
 
@@ -241,25 +242,21 @@ export default function ChatPage() {
                     </Avatar>
                     <div className="flex space-x-2">
                       <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground"></div>
-                      <div
-                        className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:0.2s]"></div>
-                      <div
-                        className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:0.4s]"></div>
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:0.2s]"></div>
+                      <div className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:0.4s]"></div>
                     </div>
                   </div>
                 </div>
               )}
-              
+
               {/* Invisible element to scroll to */}
               <div ref={scrollTargetRef} />
             </div>
           </ScrollArea>
-          
         </CardContent>
-        
       </Card>
       <Card className="mb-6 absolute bottom-0 left-6 right-6 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-t shadow-lg">
-      <CardContent className="p-4 flex-col">
+        <CardContent className="p-4 flex-col">
           <div className="w-full space-y-3">
             <div className="mb-3">
               <p className="text-xs text-muted-foreground mb-2">Try these sample questions:</p>
@@ -272,7 +269,7 @@ export default function ChatPage() {
                   "Who sends the most file-related emails?",
                   "Which Trello cards are linked to recently modified files?",
                   "What percentage of tasks have corresponding documents?",
-                  "Are there overdue tasks with active email conversations?",
+                  "Are there overdue tasks with active email conversations?"
                 ].map((sample, index) => (
                   <Button
                     key={index}
@@ -292,16 +289,18 @@ export default function ChatPage() {
               <div className="flex-1 min-w-0">
                 <Textarea
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
+                  onChange={e => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask a question about your data..."
                   className="min-h-[60px] w-full resize-none"
-                  disabled={isLoading} />
+                  disabled={isLoading}
+                />
               </div>
               <Button
                 onClick={handleSendMessage}
                 disabled={!input.trim() || isLoading}
-                className="shrink-0">
+                className="shrink-0"
+              >
                 {isLoading ? (
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-background border-t-transparent" />
                 ) : (

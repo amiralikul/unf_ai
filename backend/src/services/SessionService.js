@@ -1,17 +1,17 @@
-import crypto from 'crypto';
+import crypto from "crypto";
 
 // Database-backed session store (survives server restarts)
 export class SessionService {
   constructor(prisma) {
     this.prisma = prisma;
-    
+
     // Start automatic cleanup every 30 minutes
     this.startCleanupInterval();
   }
 
   // Generate session ID
   generateSessionId() {
-    return crypto.randomBytes(32).toString('hex');
+    return crypto.randomBytes(32).toString("hex");
   }
 
   // Create session
@@ -26,14 +26,16 @@ export class SessionService {
           user_id: userData.userId,
           email: userData.email,
           name: userData.name,
-          expires_at: expiresAt,
+          expires_at: expiresAt
         }
       });
 
-      console.log(`📝 Created database session ${sessionId.substring(0, 10)}... for user ${userData.email}`);
+      console.log(
+        `📝 Created database session ${sessionId.substring(0, 10)}... for user ${userData.email}`
+      );
       return sessionId;
     } catch (error) {
-      console.error('Error creating session:', error);
+      console.error("Error creating session:", error);
       throw error;
     }
   }
@@ -71,7 +73,7 @@ export class SessionService {
         lastAccessed: new Date()
       };
     } catch (error) {
-      console.error('Error getting session:', error);
+      console.error("Error getting session:", error);
       return null;
     }
   }
@@ -87,7 +89,7 @@ export class SessionService {
       console.log(`🗑️ Deleted session ${sessionId.substring(0, 10)}...`);
       return true;
     } catch (error) {
-      console.error('Error deleting session:', error);
+      console.error("Error deleting session:", error);
       return false;
     }
   }
@@ -103,7 +105,7 @@ export class SessionService {
       });
 
       if (!session) return false;
-      
+
       // Check if expired
       if (session.expires_at < new Date()) {
         await this.deleteSession(sessionId);
@@ -112,7 +114,7 @@ export class SessionService {
 
       return true;
     } catch (error) {
-      console.error('Error checking session:', error);
+      console.error("Error checking session:", error);
       return false;
     }
   }
@@ -126,7 +128,7 @@ export class SessionService {
         }
       });
     } catch (error) {
-      console.error('Error getting session count:', error);
+      console.error("Error getting session count:", error);
       return 0;
     }
   }
@@ -146,20 +148,23 @@ export class SessionService {
 
       return result.count;
     } catch (error) {
-      console.error('Error cleaning up sessions:', error);
+      console.error("Error cleaning up sessions:", error);
       return 0;
     }
   }
 
   // Start periodic cleanup of expired sessions
   startCleanupInterval() {
-    setInterval(async () => {
-      await this.cleanupExpiredSessions();
-    }, 30 * 60 * 1000); // 30 minutes
+    setInterval(
+      async () => {
+        await this.cleanupExpiredSessions();
+      },
+      30 * 60 * 1000
+    ); // 30 minutes
   }
 
   // Clean shutdown
   async shutdown() {
     await this.prisma.$disconnect();
   }
-} 
+}

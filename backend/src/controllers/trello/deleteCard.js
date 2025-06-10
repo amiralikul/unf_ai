@@ -1,4 +1,4 @@
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library.js';
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library.js";
 
 /**
  * Delete a Trello card
@@ -11,9 +11,9 @@ export default function deleteCardController(trelloService, prisma) {
       const userId = req.user.userId;
 
       // Validate card ID
-      if (!cardId || typeof cardId !== 'string') {
+      if (!cardId || typeof cardId !== "string") {
         return res.status(400).json({
-          error: 'Invalid card ID provided'
+          error: "Invalid card ID provided"
         });
       }
 
@@ -38,12 +38,12 @@ export default function deleteCardController(trelloService, prisma) {
 
       if (!existingCard) {
         return res.status(404).json({
-          error: 'Trello card not found or access denied'
+          error: "Trello card not found or access denied"
         });
       }
 
       // Use transaction to ensure data integrity using actual database ID
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async tx => {
         // First, delete any related card-file links that reference this card
         await tx.trelloCardFileLink.deleteMany({
           where: {
@@ -71,25 +71,24 @@ export default function deleteCardController(trelloService, prisma) {
       // For now, we just remove from our local database
 
       res.json({
-        message: 'Trello card deleted successfully',
+        message: "Trello card deleted successfully",
         cardId: existingCard.id
       });
-
     } catch (error) {
-      console.error('Error deleting Trello card:', error);
+      console.error("Error deleting Trello card:", error);
 
       if (error instanceof PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
+        if (error.code === "P2025") {
           return res.status(404).json({
-            error: 'Trello card not found'
+            error: "Trello card not found"
           });
         }
       }
 
       res.status(500).json({
-        error: 'Failed to delete Trello card',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: "Failed to delete Trello card",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined
       });
     }
   };
-} 
+}

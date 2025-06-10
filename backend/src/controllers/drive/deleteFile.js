@@ -3,19 +3,19 @@
  * Functional approach to deleting Drive files with related cleanup
  */
 
-import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library.js';
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library.js";
 
 /**
  * Factory function that creates the deleteFile controller
- * 
- * @param {object} googleOAuth - Google OAuth service instance  
+ *
+ * @param {object} googleOAuth - Google OAuth service instance
  * @param {object} prisma - Prisma client instance
  * @returns {Function} deleteFile controller function
  */
 const deleteFileController = (googleOAuth, prisma) => {
   /**
    * Delete file from database
-   * 
+   *
    * @param {object} req - Express request object
    * @param {object} res - Express response object
    */
@@ -25,11 +25,11 @@ const deleteFileController = (googleOAuth, prisma) => {
       const userId = req.user.userId;
 
       // Validate fileId parameter
-      if (!fileId || typeof fileId !== 'string') {
+      if (!fileId || typeof fileId !== "string") {
         return res.status(400).json({
           success: false,
-          error: 'Invalid file ID format',
-          code: 'INVALID_FILE_ID'
+          error: "Invalid file ID format",
+          code: "INVALID_FILE_ID"
         });
       }
 
@@ -48,8 +48,8 @@ const deleteFileController = (googleOAuth, prisma) => {
       if (!existingFile) {
         return res.status(404).json({
           success: false,
-          error: 'File not found',
-          code: 'FILE_NOT_FOUND'
+          error: "File not found",
+          code: "FILE_NOT_FOUND"
         });
       }
 
@@ -57,15 +57,15 @@ const deleteFileController = (googleOAuth, prisma) => {
       if (existingFile.user_id !== userId) {
         return res.status(403).json({
           success: false,
-          error: 'You do not have permission to delete this file',
-          code: 'INSUFFICIENT_PERMISSIONS'
+          error: "You do not have permission to delete this file",
+          code: "INSUFFICIENT_PERMISSIONS"
         });
       }
 
       // Get user tokens to delete from Google Drive
       const user = await prisma.user.findUnique({
         where: { id: userId },
-        select: { 
+        select: {
           google_access_token: true,
           google_refresh_token: true
         }
@@ -74,8 +74,8 @@ const deleteFileController = (googleOAuth, prisma) => {
       if (!user || !user.google_access_token) {
         return res.status(400).json({
           success: false,
-          error: 'Google Drive authentication required to delete file',
-          code: 'GOOGLE_AUTH_REQUIRED'
+          error: "Google Drive authentication required to delete file",
+          code: "GOOGLE_AUTH_REQUIRED"
         });
       }
 
@@ -88,17 +88,17 @@ const deleteFileController = (googleOAuth, prisma) => {
       try {
         await googleOAuth.deleteDriveFile(tokens, existingFile.google_id);
       } catch (driveError) {
-        console.error('Error deleting from Google Drive:', driveError);
+        console.error("Error deleting from Google Drive:", driveError);
         return res.status(500).json({
           success: false,
-          error: 'Failed to delete file from Google Drive',
-          code: 'DRIVE_DELETE_ERROR',
-          details: process.env.NODE_ENV === 'development' ? driveError.message : undefined
+          error: "Failed to delete file from Google Drive",
+          code: "DRIVE_DELETE_ERROR",
+          details: process.env.NODE_ENV === "development" ? driveError.message : undefined
         });
       }
 
       // Use transaction to ensure all related data is cleaned up
-      const result = await prisma.$transaction(async (tx) => {
+      const result = await prisma.$transaction(async tx => {
         // Delete related email file links
         await tx.emailFileLink.deleteMany({
           where: {
@@ -130,7 +130,7 @@ const deleteFileController = (googleOAuth, prisma) => {
           name: result.name,
           deletedAt: new Date().toISOString()
         },
-        message: 'File deleted successfully',
+        message: "File deleted successfully",
         meta: {
           relatedItemsDeleted: {
             emailFileLinks: existingFile.emails?.length || 0,
@@ -138,37 +138,36 @@ const deleteFileController = (googleOAuth, prisma) => {
           }
         }
       });
-
     } catch (error) {
-      console.error('Error deleting file:', error);
+      console.error("Error deleting file:", error);
 
       // Handle Prisma specific errors
       if (error instanceof PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
+        if (error.code === "P2025") {
           return res.status(404).json({
             success: false,
-            error: 'File not found or already deleted',
-            code: 'FILE_NOT_FOUND'
+            error: "File not found or already deleted",
+            code: "FILE_NOT_FOUND"
           });
         }
 
-        if (error.code === 'P2003') {
+        if (error.code === "P2003") {
           return res.status(409).json({
             success: false,
-            error: 'Cannot delete file due to foreign key constraints',
-            code: 'DELETE_CONSTRAINT_ERROR'
+            error: "Cannot delete file due to foreign key constraints",
+            code: "DELETE_CONSTRAINT_ERROR"
           });
         }
       }
 
       return res.status(500).json({
         success: false,
-        error: 'Internal server error while deleting file',
-        code: 'DELETE_FILE_ERROR',
-        details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        error: "Internal server error while deleting file",
+        code: "DELETE_FILE_ERROR",
+        details: process.env.NODE_ENV === "development" ? error.message : undefined
       });
     }
   };
 };
 
-export default deleteFileController; 
+export default deleteFileController;

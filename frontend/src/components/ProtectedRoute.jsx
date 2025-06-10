@@ -1,9 +1,9 @@
-import { useAuth } from '@/hooks/useAuth'
-import { Navigate, useLocation } from 'react-router-dom'
+import { useAuth } from "@/hooks/useAuth";
+import { Navigate, useLocation } from "react-router-dom";
 
 export default function ProtectedRoute({ children }) {
-  const { isAuthenticated, isLoading } = useAuth()
-  const location = useLocation()
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
 
   if (isLoading) {
     return (
@@ -13,13 +13,13 @@ export default function ProtectedRoute({ children }) {
           <span className="text-lg text-muted-foreground">Loading...</span>
         </div>
       </div>
-    )
+    );
   }
 
   if (!isAuthenticated) {
     // Store the intended destination for redirect after login
-    return <Navigate to="/login" state={{ from: location }} replace />
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  return children
+  return children;
 }

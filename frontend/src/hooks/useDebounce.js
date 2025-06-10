@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from "react";
 
 /**
  * Custom hook to debounce a value
@@ -42,17 +42,20 @@ export const useDebounce = (value, delay = 300) => {
 export const useDebouncedCallback = (callback, delay = 300, deps = []) => {
   const timeoutRef = useRef(null);
 
-  const debouncedCallback = useCallback((...args) => {
-    // Clear the previous timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
+  const debouncedCallback = useCallback(
+    (...args) => {
+      // Clear the previous timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
 
-    // Set a new timeout
-    timeoutRef.current = setTimeout(() => {
-      callback(...args);
-    }, delay);
-  }, [...deps, delay]);
+      // Set a new timeout
+      timeoutRef.current = setTimeout(() => {
+        callback(...args);
+      }, delay);
+    },
+    [...deps, delay]
+  );
 
   // Cleanup on unmount
   useEffect(() => {
@@ -75,4 +78,4 @@ export const useDebouncedCallback = (callback, delay = 300, deps = []) => {
   };
 };
 
-export default useDebounce; 
+export default useDebounce;

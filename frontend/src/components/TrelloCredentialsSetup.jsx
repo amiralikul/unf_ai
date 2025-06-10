@@ -1,39 +1,45 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card.jsx";
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from "@/components/ui/card.jsx";
 import { Button } from "@/components/ui/button.jsx";
 import { Input } from "@/components/ui/input.jsx";
 import { Label } from "@/components/ui/label.jsx";
 import { Alert, AlertDescription } from "@/components/ui/alert.jsx";
 import { ExternalLink, Key, CheckCircle, AlertCircle } from "lucide-react";
-import { api } from '@/lib/api.js';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from "@/lib/api.js";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function TrelloCredentialsSetup({ onSuccess }) {
-  const [apiKey, setApiKey] = useState('');
-  const [token, setToken] = useState('');
-  const [error, setError] = useState('');
+  const [apiKey, setApiKey] = useState("");
+  const [token, setToken] = useState("");
+  const [error, setError] = useState("");
   const queryClient = useQueryClient();
 
   const updateCredentialsMutation = useMutation({
-    mutationFn: (credentials) => api.updateTrelloCredentials(credentials),
-    onSuccess: (data) => {
+    mutationFn: credentials => api.updateTrelloCredentials(credentials),
+    onSuccess: data => {
       // Invalidate auth status to refresh user data
-      queryClient.invalidateQueries(['auth', 'status']);
+      queryClient.invalidateQueries(["auth", "status"]);
       if (onSuccess) {
         onSuccess(data);
       }
     },
-    onError: (error) => {
-      setError(error.message || 'Failed to save Trello credentials');
+    onError: error => {
+      setError(error.message || "Failed to save Trello credentials");
     }
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = e => {
     e.preventDefault();
-    setError('');
+    setError("");
 
     if (!apiKey.trim() || !token.trim()) {
-      setError('Both API key and token are required');
+      setError("Both API key and token are required");
       return;
     }
 
@@ -62,7 +68,8 @@ export function TrelloCredentialsSetup({ onSuccess }) {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              You'll need to get your API key and token from Trello. Follow the steps below to obtain them.
+              You'll need to get your API key and token from Trello. Follow the steps below to
+              obtain them.
             </AlertDescription>
           </Alert>
 
@@ -74,9 +81,9 @@ export function TrelloCredentialsSetup({ onSuccess }) {
                 Visit the Trello Developer API Keys page to get your API key.
               </p>
               <Button variant="outline" size="sm" asChild>
-                <a 
-                  href="https://trello.com/app-key" 
-                  target="_blank" 
+                <a
+                  href="https://trello.com/app-key"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2"
                 >
@@ -88,7 +95,8 @@ export function TrelloCredentialsSetup({ onSuccess }) {
             <div className="space-y-2">
               <h4 className="font-medium">Step 2: Generate a Token</h4>
               <p className="text-sm text-muted-foreground">
-                After getting your API key, you'll need to generate a token. Replace YOUR_API_KEY in the URL below with your actual API key.
+                After getting your API key, you'll need to generate a token. Replace YOUR_API_KEY in
+                the URL below with your actual API key.
               </p>
               <div className="bg-muted p-3 rounded-md text-sm font-mono break-all">
                 https://trello.com/1/authorize?expiration=never&scope=read&response_type=token&name=UnframeAI&key=YOUR_API_KEY
@@ -108,7 +116,7 @@ export function TrelloCredentialsSetup({ onSuccess }) {
                 type="text"
                 placeholder="Enter your Trello API key"
                 value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                onChange={e => setApiKey(e.target.value)}
                 disabled={isLoading}
               />
             </div>
@@ -120,7 +128,7 @@ export function TrelloCredentialsSetup({ onSuccess }) {
                 type="text"
                 placeholder="Enter your Trello token"
                 value={token}
-                onChange={(e) => setToken(e.target.value)}
+                onChange={e => setToken(e.target.value)}
                 disabled={isLoading}
               />
             </div>
@@ -150,4 +158,4 @@ export function TrelloCredentialsSetup({ onSuccess }) {
       </Card>
     </div>
   );
-} 
+}

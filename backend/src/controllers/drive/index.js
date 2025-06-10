@@ -1,12 +1,12 @@
-import getFilesController from './getFiles.js';
-import getFileByIdController from './getFileById.js';
-import syncFilesController from './syncFiles.js';
-import updateFileController from './updateFile.js';
-import deleteFileController from './deleteFile.js';
+import getFilesController from "./getFiles.js";
+import getFileByIdController from "./getFileById.js";
+import syncFilesController from "./syncFiles.js";
+import updateFileController from "./updateFile.js";
+import deleteFileController from "./deleteFile.js";
 
 /**
  * Factory function to create Drive controllers with dependencies
- * 
+ *
  * @param {object} dependencies - Controller dependencies
  * @returns {object} Drive controllers
  */

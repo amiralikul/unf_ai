@@ -1,8 +1,8 @@
-import langchainControllers from './langchainNlToSqlController.js';
+import langchainControllers from "./langchainNlToSqlController.js";
 
 /**
  * Factory function to create AI controllers with dependencies
- * 
+ *
  * @param {object} dependencies - Controller dependencies
  * @returns {object} AI controllers
  */
@@ -12,6 +12,4 @@ export const createAIControllers = ({ openai, prisma, langchainService }) => ({
   nlToSqlHealth: langchainControllers.langchainNlToSqlHealth(openai, prisma, langchainService)
 });
 
-export {
-  langchainControllers
-};
+export { langchainControllers };

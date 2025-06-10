@@ -12,11 +12,11 @@
 export const getPaginationParams = (query, defaultPage = 1, defaultLimit = 10) => {
   const page = parseInt(query.page) || defaultPage;
   const limit = parseInt(query.limit) || defaultLimit;
-  
-  return { 
-    page, 
-    limit, 
-    skip: (page - 1) * limit 
+
+  return {
+    page,
+    limit,
+    skip: (page - 1) * limit
   };
 };
 
@@ -29,7 +29,7 @@ export const getPaginationParams = (query, defaultPage = 1, defaultLimit = 10) =
  */
 export const getPaginationMeta = (total, page, limit) => {
   const totalPages = Math.ceil(total / limit);
-  
+
   return {
     page,
     limit,

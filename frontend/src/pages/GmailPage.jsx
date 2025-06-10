@@ -1,137 +1,138 @@
-import React from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table.jsx"
-import { Badge } from "@/components/ui/badge.jsx"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx"
-import { Button } from "@/components/ui/button.jsx"
-import { RefreshCw, AlertCircle, MoreHorizontal, Eye, Edit3, Trash2 } from "lucide-react"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu.jsx"
-import { useGmailMessagesWithPagination, useSyncGmailMessages, useUpdateGmailMessage, useDeleteGmailMessage } from "@/hooks/useGmailMessages.js"
-import { Skeleton } from "@/components/ui/skeleton.jsx"
-import { UrlPagination } from "@/components/ui/url-pagination.jsx"
-import { format, isToday, isYesterday, parseISO } from "date-fns"
-import ViewMessageDialog from "@/components/dialogs/ViewMessageDialog.jsx"
-import EditMessageDialog from "@/components/dialogs/EditMessageDialog.jsx"
-import ConfirmDialog from "@/components/ui/confirm-dialog.jsx"
+import React from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table.jsx";
+import { Badge } from "@/components/ui/badge.jsx";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card.jsx";
+import { Button } from "@/components/ui/button.jsx";
+import { RefreshCw, AlertCircle, MoreHorizontal, Eye, Edit3, Trash2 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger
+} from "@/components/ui/dropdown-menu.jsx";
+import {
+  useGmailMessagesWithPagination,
+  useSyncGmailMessages,
+  useUpdateGmailMessage,
+  useDeleteGmailMessage
+} from "@/hooks/useGmailMessages.js";
+import { Skeleton } from "@/components/ui/skeleton.jsx";
+import { UrlPagination } from "@/components/ui/url-pagination.jsx";
+import { format, isToday, isYesterday, parseISO } from "date-fns";
+import ViewMessageDialog from "@/components/dialogs/ViewMessageDialog.jsx";
+import EditMessageDialog from "@/components/dialogs/EditMessageDialog.jsx";
+import ConfirmDialog from "@/components/ui/confirm-dialog.jsx";
 
 export default function GmailPage() {
-  
   // Fetch Gmail messages with built-in pagination
-  const { 
-    data, 
-    isLoading, 
-    isError, 
-    error,
-    pagination
-  } = useGmailMessagesWithPagination()
-  
+  const { data, isLoading, isError, error, pagination } = useGmailMessagesWithPagination();
+
   // Mutations
-  const { 
-    mutate: syncEmails, 
-    isPending: isSyncing 
-  } = useSyncGmailMessages()
-  
-  const { 
-    mutate: updateMessage, 
-    isPending: isUpdating 
-  } = useUpdateGmailMessage()
-  
-  const { 
-    mutate: deleteMessage, 
-    isPending: isDeleting 
-  } = useDeleteGmailMessage()
-  
+  const { mutate: syncEmails, isPending: isSyncing } = useSyncGmailMessages();
+
+  const { mutate: updateMessage, isPending: isUpdating } = useUpdateGmailMessage();
+
+  const { mutate: deleteMessage, isPending: isDeleting } = useDeleteGmailMessage();
+
   // Dialog states
-  const [viewDialog, setViewDialog] = React.useState({ open: false, message: null })
-  const [editDialog, setEditDialog] = React.useState({ open: false, message: null })
-  const [deleteDialog, setDeleteDialog] = React.useState({ open: false, message: null })
-  
+  const [viewDialog, setViewDialog] = React.useState({ open: false, message: null });
+  const [editDialog, setEditDialog] = React.useState({ open: false, message: null });
+  const [deleteDialog, setDeleteDialog] = React.useState({ open: false, message: null });
+
   // Format date for display
-  const formatDate = (dateString) => {
+  const formatDate = dateString => {
     try {
-      const date = parseISO(dateString)
+      const date = parseISO(dateString);
       if (isToday(date)) {
-        return format(date, "h:mm a")
+        return format(date, "h:mm a");
       } else if (isYesterday(date)) {
-        return "Yesterday"
+        return "Yesterday";
       } else {
-        return format(date, "MMM d")
+        return format(date, "MMM d");
       }
     } catch (error) {
-      return dateString
+      return dateString;
     }
-  }
-  
+  };
+
   // Handle refresh
   const handleRefresh = () => {
-    syncEmails()
-  }
-  
-    // Handle message actions
-  const handleViewMessage = (message) => {
-    setViewDialog({ open: true, message })
-  }
+    syncEmails();
+  };
 
-  const handleEditMessage = (message) => {
-    setEditDialog({ open: true, message })
-  }
+  // Handle message actions
+  const handleViewMessage = message => {
+    setViewDialog({ open: true, message });
+  };
 
-  const handleDeleteMessage = (message) => {
-    setDeleteDialog({ open: true, message })
-  }
+  const handleEditMessage = message => {
+    setEditDialog({ open: true, message });
+  };
+
+  const handleDeleteMessage = message => {
+    setDeleteDialog({ open: true, message });
+  };
 
   const handleMessageAction = (action, message) => {
     switch (action) {
-      case 'view':
-        handleViewMessage(message)
-        break
-      case 'edit':
-        handleEditMessage(message)
-        break
-      case 'delete':
-        handleDeleteMessage(message)
-        break
+      case "view":
+        handleViewMessage(message);
+        break;
+      case "edit":
+        handleEditMessage(message);
+        break;
+      case "delete":
+        handleDeleteMessage(message);
+        break;
       default:
-        break
+        break;
     }
-  }
+  };
 
-  const handleSaveMessage = (messageData) => {
+  const handleSaveMessage = messageData => {
     updateMessage(
-      { 
-        id: messageData.id, 
-        data: { 
+      {
+        id: messageData.id,
+        data: {
           subject: messageData.subject
-        } 
+        }
       },
       {
         onSuccess: () => {
-          setEditDialog({ open: false, message: null })
+          setEditDialog({ open: false, message: null });
         },
-        onError: (error) => {
-          console.error('Failed to update message:', error)
+        onError: error => {
+          console.error("Failed to update message:", error);
           // Keep dialog open on error so user can retry
         }
       }
-    )
-  }
-  
+    );
+  };
+
   const handleConfirmDelete = () => {
     if (deleteDialog.message) {
       deleteMessage(deleteDialog.message.id, {
         onSuccess: () => {
-          setDeleteDialog({ open: false, message: null })
+          setDeleteDialog({ open: false, message: null });
         },
-        onError: (error) => {
-          console.error('Failed to delete message:', error)
+        onError: error => {
+          console.error("Failed to delete message:", error);
           // Keep dialog open on error so user can retry
         }
-      })
+      });
     }
-  }
-  
+  };
+
   // Get unread count
-  const unreadCount = data?.messages?.filter(email => !email.isRead).length || 0
-  
+  const unreadCount = data?.messages?.filter(email => !email.isRead).length || 0;
+
   // Render loading state
   if (isLoading) {
     return (
@@ -148,16 +149,18 @@ export default function GmailPage() {
               <Skeleton className="h-10 w-10" />
             </div>
             <div className="space-y-2">
-              {Array(5).fill(0).map((_, i) => (
-                <Skeleton key={i} className="h-20 w-full" />
-              ))}
+              {Array(5)
+                .fill(0)
+                .map((_, i) => (
+                  <Skeleton key={i} className="h-20 w-full" />
+                ))}
             </div>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
-  
+
   // Render error state
   if (isError) {
     return (
@@ -176,9 +179,9 @@ export default function GmailPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
-  
+
   return (
     <div className="p-4 md:p-6 w-full max-w-full">
       <Card className="w-full">
@@ -190,14 +193,14 @@ export default function GmailPage() {
         </CardHeader>
         <CardContent className="p-4 md:p-6">
           <div className="flex items-center gap-2 justify-end pb-4">
-            <Button 
-              variant="outline" 
-              size="icon" 
+            <Button
+              variant="outline"
+              size="icon"
               onClick={handleRefresh}
               disabled={isSyncing}
               className="shrink-0"
             >
-              <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-4 w-4 ${isSyncing ? "animate-spin" : ""}`} />
             </Button>
           </div>
 
@@ -220,13 +223,16 @@ export default function GmailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {data?.messages?.map((email) => (
-                        <TableRow 
-                          key={email.id} 
+                      {data?.messages?.map(email => (
+                        <TableRow
+                          key={email.id}
                           className={`${email.isRead ? "" : "font-medium bg-muted/30"} hover:bg-muted/50`}
                         >
                           <TableCell className="truncate pr-2">
-                            <div className="truncate" title={`${email.fromName || ''} <${email.from}>`}>
+                            <div
+                              className="truncate"
+                              title={`${email.fromName || ""} <${email.from}>`}
+                            >
                               {email.fromName || email.from}
                             </div>
                           </TableCell>
@@ -242,7 +248,10 @@ export default function GmailPage() {
                                   </Badge>
                                 )}
                               </div>
-                              <div className="text-sm text-muted-foreground truncate" title={email.snippet || email.preview}>
+                              <div
+                                className="text-sm text-muted-foreground truncate"
+                                title={email.snippet || email.preview}
+                              >
                                 {email.snippet || email.preview}
                               </div>
                             </div>
@@ -261,16 +270,22 @@ export default function GmailPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handleMessageAction('view', email)} className="cursor-pointer">
+                                <DropdownMenuItem
+                                  onClick={() => handleMessageAction("view", email)}
+                                  className="cursor-pointer"
+                                >
                                   <Eye className="mr-2 h-4 w-4" />
                                   View Details
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleMessageAction('edit', email)} className="cursor-pointer">
+                                <DropdownMenuItem
+                                  onClick={() => handleMessageAction("edit", email)}
+                                  className="cursor-pointer"
+                                >
                                   <Edit3 className="mr-2 h-4 w-4" />
                                   Edit
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
-                                  onClick={() => handleMessageAction('delete', email)}
+                                <DropdownMenuItem
+                                  onClick={() => handleMessageAction("delete", email)}
                                   className="text-destructive focus:text-destructive cursor-pointer"
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
@@ -288,18 +303,23 @@ export default function GmailPage() {
 
               {/* Mobile Card View */}
               <div className="md:hidden space-y-3">
-                {data?.messages?.map((email) => (
-                  <Card 
-                    key={email.id} 
+                {data?.messages?.map(email => (
+                  <Card
+                    key={email.id}
                     className={`${email.isRead ? "" : "border-l-4 border-l-blue-500"} hover:shadow-md transition-shadow`}
                   >
                     <CardContent className="p-4">
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate text-sm" title={`${email.fromName || ''} <${email.from}>`}>
+                          <p
+                            className="font-medium truncate text-sm"
+                            title={`${email.fromName || ""} <${email.from}>`}
+                          >
                             {email.fromName || email.from}
                           </p>
-                          <p className="text-xs text-muted-foreground">{formatDate(email.receivedAt)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {formatDate(email.receivedAt)}
+                          </p>
                         </div>
                         <div className="flex items-center gap-2 ml-2 shrink-0">
                           {email.isImportant && (
@@ -309,22 +329,32 @@ export default function GmailPage() {
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-6 w-6 cursor-pointer">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 cursor-pointer"
+                              >
                                 <MoreHorizontal className="h-3 w-3" />
                                 <span className="sr-only">Actions</span>
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleMessageAction('view', email)} className="cursor-pointer">
+                              <DropdownMenuItem
+                                onClick={() => handleMessageAction("view", email)}
+                                className="cursor-pointer"
+                              >
                                 <Eye className="mr-2 h-4 w-4" />
                                 View Details
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleMessageAction('edit', email)} className="cursor-pointer">
+                              <DropdownMenuItem
+                                onClick={() => handleMessageAction("edit", email)}
+                                className="cursor-pointer"
+                              >
                                 <Edit3 className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
-                                onClick={() => handleMessageAction('delete', email)}
+                              <DropdownMenuItem
+                                onClick={() => handleMessageAction("delete", email)}
                                 className="text-destructive focus:text-destructive cursor-pointer"
                               >
                                 <Trash2 className="mr-2 h-4 w-4" />
@@ -334,7 +364,9 @@ export default function GmailPage() {
                           </DropdownMenu>
                         </div>
                       </div>
-                      <h4 className={`text-sm mb-1 ${email.isRead ? "font-normal" : "font-semibold"}`}>
+                      <h4
+                        className={`text-sm mb-1 ${email.isRead ? "font-normal" : "font-semibold"}`}
+                      >
                         {email.subject}
                       </h4>
                       <p className="text-xs text-muted-foreground line-clamp-2">
@@ -346,9 +378,9 @@ export default function GmailPage() {
               </div>
             </div>
           )}
-          
+
           {data?.pagination && (
-            <UrlPagination 
+            <UrlPagination
               total={data.pagination.total}
               totalPages={data.pagination.totalPages}
               className="mt-4"
@@ -361,7 +393,7 @@ export default function GmailPage() {
       {/* Dialogs */}
       <ViewMessageDialog
         open={viewDialog.open}
-        onOpenChange={(open) => setViewDialog({ open, message: open ? viewDialog.message : null })}
+        onOpenChange={open => setViewDialog({ open, message: open ? viewDialog.message : null })}
         message={viewDialog.message}
         onEdit={handleEditMessage}
         onDelete={handleDeleteMessage}
@@ -370,7 +402,7 @@ export default function GmailPage() {
       {/* Edit Message Dialog */}
       <EditMessageDialog
         open={editDialog.open}
-        onOpenChange={(open) => setEditDialog({ open, message: open ? editDialog.message : null })}
+        onOpenChange={open => setEditDialog({ open, message: open ? editDialog.message : null })}
         message={editDialog.message}
         onSave={handleSaveMessage}
         loading={isUpdating}
@@ -378,9 +410,11 @@ export default function GmailPage() {
 
       <ConfirmDialog
         open={deleteDialog.open}
-        onOpenChange={(open) => setDeleteDialog({ open, message: open ? deleteDialog.message : null })}
+        onOpenChange={open =>
+          setDeleteDialog({ open, message: open ? deleteDialog.message : null })
+        }
         title="Delete Message"
-        description={`Are you sure you want to delete the message "${deleteDialog.message?.subject || '(No Subject)'}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete the message "${deleteDialog.message?.subject || "(No Subject)"}"? This action cannot be undone.`}
         confirmText="Delete"
         cancelText="Cancel"
         destructive={true}

@@ -1,19 +1,19 @@
-import { PrismaClient } from '@prisma/client';
-import OpenAI from 'openai';
-import { TrelloService } from '../services/TrelloService.js';
-import { GoogleOAuthService } from '../services/GoogleOAuthService.js';
-import { SessionService } from '../services/SessionService.js';
-import { LinkDetectionService } from '../services/LinkDetectionService.js';
-import { LangChainSqlService } from '../services/LangChainSqlService.js';
-import { createAIControllers } from './ai/index.js';
-import { createTrelloControllers } from './trello/index.js';
-import { createDriveControllers } from './drive/index.js';
-import { createGmailControllers } from './gmail/index.js';
+import { PrismaClient } from "@prisma/client";
+import OpenAI from "openai";
+import { TrelloService } from "../services/TrelloService.js";
+import { GoogleOAuthService } from "../services/GoogleOAuthService.js";
+import { SessionService } from "../services/SessionService.js";
+import { LinkDetectionService } from "../services/LinkDetectionService.js";
+import { LangChainSqlService } from "../services/LangChainSqlService.js";
+import { createAIControllers } from "./ai/index.js";
+import { createTrelloControllers } from "./trello/index.js";
+import { createDriveControllers } from "./drive/index.js";
+import { createGmailControllers } from "./gmail/index.js";
 
 // Initialize shared dependencies
 const prisma = new PrismaClient();
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY
 });
 
 // Initialize service instances

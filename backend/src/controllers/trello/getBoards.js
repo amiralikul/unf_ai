@@ -1,14 +1,11 @@
-import { sendSuccess } from '../../utils/responses.js';
-import { getPaginationParams, getPaginationMeta } from '../../utils/pagination.js';
-import { 
-  ExternalServiceError, 
-  DatabaseError
-} from '../../utils/errors.js';
-import { getTrelloCredentials } from '../../utils/trelloAuth.js';
+import { sendSuccess } from "../../utils/responses.js";
+import { getPaginationParams, getPaginationMeta } from "../../utils/pagination.js";
+import { ExternalServiceError, DatabaseError } from "../../utils/errors.js";
+import { getTrelloCredentials } from "../../utils/trelloAuth.js";
 
 /**
  * Get Trello boards with pagination and filtering
- * 
+ *
  * @param {object} trelloService - Trello service instance
  * @param {object} prisma - Prisma client instance
  * @returns {function} Express route handler
@@ -27,27 +24,27 @@ export const getBoardsController = (trelloService, prisma) => async (req, res) =
     try {
       trelloBoards = await trelloService.getBoards(trello_api_key, trello_token);
     } catch (error) {
-      throw new ExternalServiceError('Trello', error.message, error);
+      throw new ExternalServiceError("Trello", error.message, error);
     }
 
     // Save/update boards in database with transaction
-    const savedBoards = await prisma.$transaction(async (tx) => {
+    const savedBoards = await prisma.$transaction(async tx => {
       const results = [];
-      
+
       for (const board of trelloBoards) {
         try {
           const savedBoard = await tx.trelloBoard.upsert({
             where: { trello_id: board.id },
             update: {
               name: board.name,
-              url: board.url,
+              url: board.url
             },
             create: {
               trello_id: board.id,
               name: board.name,
               url: board.url,
-              user_id: userId,
-            },
+              user_id: userId
+            }
           });
           results.push(savedBoard);
         } catch (dbError) {
@@ -55,7 +52,7 @@ export const getBoardsController = (trelloService, prisma) => async (req, res) =
           // Continue with other boards
         }
       }
-      
+
       return results;
     });
 
@@ -69,7 +66,7 @@ export const getBoardsController = (trelloService, prisma) => async (req, res) =
         where: whereClause,
         skip: pagination.skip,
         take: pagination.limit,
-        orderBy: { name: 'asc' },
+        orderBy: { name: "asc" },
         include: {
           _count: {
             select: { cards: true }
@@ -90,17 +87,17 @@ export const getBoardsController = (trelloService, prisma) => async (req, res) =
     }));
 
     // Send response
-    sendSuccess(res, 
-      { boards: transformedBoards }, 
+    sendSuccess(
+      res,
+      { boards: transformedBoards },
       {
         ...paginationMeta,
         synced: savedBoards.length
       }
     );
-
   } catch (error) {
-    if (error.code && error.code.startsWith('P')) {
-      throw new DatabaseError('Failed to access boards', 'getBoards', error);
+    if (error.code && error.code.startsWith("P")) {
+      throw new DatabaseError("Failed to access boards", "getBoards", error);
     }
     throw error;
   }

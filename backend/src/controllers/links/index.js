@@ -1,26 +1,26 @@
-import { sendSuccess, sendError } from '../../utils/responses.js';
-import { ValidationError, DatabaseError } from '../../utils/errors.js';
-import { LinkDetectionService } from '../../services/LinkDetectionService.js';
+import { sendSuccess, sendError } from "../../utils/responses.js";
+import { ValidationError, DatabaseError } from "../../utils/errors.js";
+import { LinkDetectionService } from "../../services/LinkDetectionService.js";
 
 /**
  * Create link management controllers
- * 
+ *
  * @param {object} prisma - Prisma client instance
  * @returns {object} Controller functions
  */
-export const createLinkControllers = (prisma) => {
+export const createLinkControllers = prisma => {
   const linkDetectionService = new LinkDetectionService(prisma);
 
   return {
     // POST /api/links/card-file
     linkCardToFile: async (req, res) => {
       try {
-        const { cardId, fileId, linkType = 'reference' } = req.body;
+        const { cardId, fileId, linkType = "reference" } = req.body;
         const userId = req.user.userId;
 
         // Validate required fields
         if (!cardId || !fileId) {
-          throw new ValidationError('cardId and fileId are required');
+          throw new ValidationError("cardId and fileId are required");
         }
 
         // Validate that the card belongs to the user
@@ -29,7 +29,7 @@ export const createLinkControllers = (prisma) => {
         });
 
         if (!card) {
-          throw new ValidationError('Card not found or access denied');
+          throw new ValidationError("Card not found or access denied");
         }
 
         // Validate that the file belongs to the user
@@ -38,20 +38,19 @@ export const createLinkControllers = (prisma) => {
         });
 
         if (!file) {
-          throw new ValidationError('File not found or access denied');
+          throw new ValidationError("File not found or access denied");
         }
 
         // Create the link
         const link = await linkDetectionService.linkCardToFile(cardId, fileId, linkType, userId);
 
         sendSuccess(res, {
-          message: 'Card-file link created successfully',
+          message: "Card-file link created successfully",
           data: link
         });
-
       } catch (error) {
-        if (error.code && error.code.startsWith('P')) {
-          throw new DatabaseError('Failed to create card-file link', 'linkCardToFile', error);
+        if (error.code && error.code.startsWith("P")) {
+          throw new DatabaseError("Failed to create card-file link", "linkCardToFile", error);
         }
         throw error;
       }
@@ -60,12 +59,12 @@ export const createLinkControllers = (prisma) => {
     // POST /api/links/card-email
     linkCardToEmail: async (req, res) => {
       try {
-        const { cardId, emailId, linkType = 'discussion' } = req.body;
+        const { cardId, emailId, linkType = "discussion" } = req.body;
         const userId = req.user.userId;
 
         // Validate required fields
         if (!cardId || !emailId) {
-          throw new ValidationError('cardId and emailId are required');
+          throw new ValidationError("cardId and emailId are required");
         }
 
         // Validate that the card belongs to the user
@@ -74,7 +73,7 @@ export const createLinkControllers = (prisma) => {
         });
 
         if (!card) {
-          throw new ValidationError('Card not found or access denied');
+          throw new ValidationError("Card not found or access denied");
         }
 
         // Validate that the email belongs to the user
@@ -83,20 +82,19 @@ export const createLinkControllers = (prisma) => {
         });
 
         if (!email) {
-          throw new ValidationError('Email not found or access denied');
+          throw new ValidationError("Email not found or access denied");
         }
 
         // Create the link
         const link = await linkDetectionService.linkCardToEmail(cardId, emailId, linkType, userId);
 
         sendSuccess(res, {
-          message: 'Card-email link created successfully',
+          message: "Card-email link created successfully",
           data: link
         });
-
       } catch (error) {
-        if (error.code && error.code.startsWith('P')) {
-          throw new DatabaseError('Failed to create card-email link', 'linkCardToEmail', error);
+        if (error.code && error.code.startsWith("P")) {
+          throw new DatabaseError("Failed to create card-email link", "linkCardToEmail", error);
         }
         throw error;
       }
@@ -114,7 +112,7 @@ export const createLinkControllers = (prisma) => {
         });
 
         if (!card) {
-          throw new ValidationError('Card not found or access denied');
+          throw new ValidationError("Card not found or access denied");
         }
 
         // Delete the link
@@ -128,16 +126,15 @@ export const createLinkControllers = (prisma) => {
         });
 
         sendSuccess(res, {
-          message: 'Card-file link removed successfully',
+          message: "Card-file link removed successfully",
           data: deletedLink
         });
-
       } catch (error) {
-        if (error.code === 'P2025') {
-          throw new ValidationError('Link not found');
+        if (error.code === "P2025") {
+          throw new ValidationError("Link not found");
         }
-        if (error.code && error.code.startsWith('P')) {
-          throw new DatabaseError('Failed to remove card-file link', 'unlinkCardFromFile', error);
+        if (error.code && error.code.startsWith("P")) {
+          throw new DatabaseError("Failed to remove card-file link", "unlinkCardFromFile", error);
         }
         throw error;
       }
@@ -155,7 +152,7 @@ export const createLinkControllers = (prisma) => {
         });
 
         if (!card) {
-          throw new ValidationError('Card not found or access denied');
+          throw new ValidationError("Card not found or access denied");
         }
 
         // Delete the link
@@ -169,16 +166,15 @@ export const createLinkControllers = (prisma) => {
         });
 
         sendSuccess(res, {
-          message: 'Card-email link removed successfully',
+          message: "Card-email link removed successfully",
           data: deletedLink
         });
-
       } catch (error) {
-        if (error.code === 'P2025') {
-          throw new ValidationError('Link not found');
+        if (error.code === "P2025") {
+          throw new ValidationError("Link not found");
         }
-        if (error.code && error.code.startsWith('P')) {
-          throw new DatabaseError('Failed to remove card-email link', 'unlinkCardFromEmail', error);
+        if (error.code && error.code.startsWith("P")) {
+          throw new DatabaseError("Failed to remove card-email link", "unlinkCardFromEmail", error);
         }
         throw error;
       }
@@ -196,14 +192,14 @@ export const createLinkControllers = (prisma) => {
         });
 
         if (!card) {
-          throw new ValidationError('Card not found or access denied');
+          throw new ValidationError("Card not found or access denied");
         }
 
         // Get all links for the card
         const links = await linkDetectionService.getCardLinks(cardId);
 
         sendSuccess(res, {
-          message: 'Card links retrieved successfully',
+          message: "Card links retrieved successfully",
           data: {
             card: {
               id: card.id,
@@ -213,17 +209,14 @@ export const createLinkControllers = (prisma) => {
             ...links
           }
         });
-
       } catch (error) {
-        if (error.code && error.code.startsWith('P')) {
-          throw new DatabaseError('Failed to retrieve card links', 'getCardLinks', error);
+        if (error.code && error.code.startsWith("P")) {
+          throw new DatabaseError("Failed to retrieve card links", "getCardLinks", error);
         }
         throw error;
       }
-    },
-
-
+    }
   };
 };
 
-export default createLinkControllers; 
+export default createLinkControllers;

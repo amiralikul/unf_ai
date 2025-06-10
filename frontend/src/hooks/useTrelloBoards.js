@@ -1,7 +1,7 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { queryKeys } from '@/lib/queryClient';
-import { useAuth } from '@/hooks/useAuth';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { queryKeys } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 
 export const useTrelloBoards = (params = {}) => {
   const { isAuthenticated } = useAuth();
@@ -10,18 +10,18 @@ export const useTrelloBoards = (params = {}) => {
     queryKey: [...queryKeys.trelloBoards, params],
     queryFn: () => api.getTrelloBoards(params),
     staleTime: 3 * 60 * 1000, // 3 minutes for board data
-    enabled: isAuthenticated, // Only fetch when authenticated
+    enabled: isAuthenticated // Only fetch when authenticated
   });
 };
 
-export const useTrelloBoard = (boardId) => {
+export const useTrelloBoard = boardId => {
   const { isAuthenticated } = useAuth();
 
   return useQuery({
-    queryKey: ['trello', 'board', boardId],
+    queryKey: ["trello", "board", boardId],
     queryFn: () => api.getTrelloBoard(boardId),
     staleTime: 5 * 60 * 1000, // 5 minutes for individual board data
-    enabled: isAuthenticated && !!boardId,
+    enabled: isAuthenticated && !!boardId
   });
 };
 
@@ -33,10 +33,10 @@ export const useSyncTrelloData = () => {
     onSuccess: () => {
       // Invalidate all trello queries to refetch fresh data
       queryClient.invalidateQueries({ queryKey: queryKeys.trelloBoards });
-      queryClient.invalidateQueries({ queryKey: ['trelloCards'] });
+      queryClient.invalidateQueries({ queryKey: ["trelloCards"] });
     },
-    onError: (error) => {
-      console.error('Failed to sync Trello data:', error);
-    },
+    onError: error => {
+      console.error("Failed to sync Trello data:", error);
+    }
   });
 };

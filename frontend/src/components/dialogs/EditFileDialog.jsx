@@ -1,90 +1,80 @@
-import * as React from "react"
-import { Save, X } from "lucide-react"
+import * as React from "react";
+import { Save, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+  DialogTitle
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+  SelectValue
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
-
-
-export function EditFileDialog({ 
-  open, 
-  onOpenChange, 
-  file, 
-  onSave, 
-  loading = false 
-}) {
+export function EditFileDialog({ open, onOpenChange, file, onSave, loading = false }) {
   const [formData, setFormData] = React.useState({
-    name: ''
-  })
-  const [errors, setErrors] = React.useState({})
+    name: ""
+  });
+  const [errors, setErrors] = React.useState({});
 
   // Initialize form data when file changes
   React.useEffect(() => {
     if (file) {
       setFormData({
-        name: file.name || ''
-      })
-      setErrors({})
+        name: file.name || ""
+      });
+      setErrors({});
     }
-  }, [file])
+  }, [file]);
 
   const validateForm = () => {
-    const newErrors = {}
-    
+    const newErrors = {};
+
     if (!formData.name.trim()) {
-      newErrors.name = 'File name is required'
+      newErrors.name = "File name is required";
     } else if (formData.name.trim().length < 1) {
-      newErrors.name = 'File name must be at least 1 character'
+      newErrors.name = "File name must be at least 1 character";
     } else if (formData.name.trim().length > 255) {
-      newErrors.name = 'File name must be less than 255 characters'
+      newErrors.name = "File name must be less than 255 characters";
     }
 
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
 
+  const handleSubmit = e => {
+    e.preventDefault();
 
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    
     if (!validateForm()) {
-      return
+      return;
     }
 
     onSave?.({
       id: file.id,
       name: formData.name.trim()
-    })
-  }
+    });
+  };
 
   const handleInputChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error for this field
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }))
+      setErrors(prev => ({ ...prev, [field]: "" }));
     }
-  }
+  };
 
-  const hasChanges = file && formData.name !== file.name
+  const hasChanges = file && formData.name !== file.name;
 
-  if (!file) return null
+  if (!file) return null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -103,7 +93,7 @@ export function EditFileDialog({
             <Input
               id="fileName"
               value={formData.name}
-              onChange={(e) => handleInputChange('name', e.target.value)}
+              onChange={e => handleInputChange("name", e.target.value)}
               placeholder="Enter file name"
               disabled={loading}
             />
@@ -113,8 +103,6 @@ export function EditFileDialog({
               </Alert>
             )}
           </div>
-
-
 
           <DialogFooter>
             <Button
@@ -126,10 +114,7 @@ export function EditFileDialog({
               <X className="mr-2 h-4 w-4" />
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={loading || !hasChanges}
-            >
+            <Button type="submit" disabled={loading || !hasChanges}>
               {loading ? (
                 "Saving..."
               ) : (
@@ -143,7 +128,7 @@ export function EditFileDialog({
         </form>
       </DialogContent>
     </Dialog>
-  )
+  );
 }
 
-export default EditFileDialog 
+export default EditFileDialog;

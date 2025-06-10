@@ -1,20 +1,20 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Chrome, Shield, Zap, Users, CheckCircle, AlertCircle } from "lucide-react"
-import { useAuth } from "@/hooks/useAuth"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Chrome, Shield, Zap, Users, CheckCircle, AlertCircle } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function LoginForm({ oauthError }) {
-  const { login, error, loginMutation } = useAuth()
-  const isLoading = loginMutation.isPending
+  const { login, error, loginMutation } = useAuth();
+  const isLoading = loginMutation.isPending;
 
-  const displayError = error || oauthError
+  const displayError = error || oauthError;
 
   const handleGoogleLogin = () => {
     login();
     // The login function will redirect to Google OAuth
-  }
+  };
 
   return (
     <div className="w-full space-y-8">
@@ -134,5 +134,5 @@ export default function LoginForm({ oauthError }) {
         </div>
       </div>
     </div>
-  )
+  );
 }

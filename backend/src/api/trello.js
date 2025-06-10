@@ -1,16 +1,16 @@
-import express from 'express';
-import { requireAuth } from './auth.js';
-import controllers from '../controllers/index.js';
-import { validateQuery, validateParams, validateBody } from '../middleware/validation.js';
-import { asyncHandler } from '../middleware/errorHandler.js';
-import paginationMiddleware from '../middleware/pagination.js';
-import { 
-  trelloBoardsQuerySchema, 
-  trelloCardsQuerySchema, 
+import express from "express";
+import { requireAuth } from "./auth.js";
+import controllers from "../controllers/index.js";
+import { validateQuery, validateParams, validateBody } from "../middleware/validation.js";
+import { asyncHandler } from "../middleware/errorHandler.js";
+import paginationMiddleware from "../middleware/pagination.js";
+import {
+  trelloBoardsQuerySchema,
+  trelloCardsQuerySchema,
   trelloBoardParamSchema,
   trelloCardParamSchema,
   updateTrelloCardSchema
-} from '../validation/schemas.js';
+} from "../validation/schemas.js";
 
 const router = express.Router();
 
@@ -18,14 +18,16 @@ const router = express.Router();
 router.use(requireAuth);
 
 // GET /api/trello/boards - Get Trello boards with pagination and filtering
-router.get('/boards',
+router.get(
+  "/boards",
   validateQuery(trelloBoardsQuerySchema),
   paginationMiddleware,
   asyncHandler(controllers.trello.getBoards)
 );
 
 // GET /api/trello/boards/:boardId/cards - Get cards for a specific board
-router.get('/boards/:boardId/cards',
+router.get(
+  "/boards/:boardId/cards",
   validateParams(trelloBoardParamSchema),
   validateQuery(trelloCardsQuerySchema),
   paginationMiddleware,
@@ -33,19 +35,19 @@ router.get('/boards/:boardId/cards',
 );
 
 // POST /api/trello/sync - Sync boards and cards from Trello
-router.post('/sync',
-  asyncHandler(controllers.trello.syncBoards)
-);
+router.post("/sync", asyncHandler(controllers.trello.syncBoards));
 
 // PATCH /api/trello/cards/:cardId - Update a Trello card
-router.patch('/cards/:cardId',
+router.patch(
+  "/cards/:cardId",
   validateParams(trelloCardParamSchema),
   validateBody(updateTrelloCardSchema),
   asyncHandler(controllers.trello.updateCard)
 );
 
 // DELETE /api/trello/cards/:cardId - Delete a Trello card
-router.delete('/cards/:cardId',
+router.delete(
+  "/cards/:cardId",
   validateParams(trelloCardParamSchema),
   asyncHandler(controllers.trello.deleteCard)
 );

@@ -1,14 +1,10 @@
-import { sendSuccess } from '../../utils/responses.js';
-import { getPaginationParams, getPaginationMeta } from '../../utils/pagination.js';
-import { 
-  AuthenticationError, 
-  ExternalServiceError, 
-  DatabaseError
-} from '../../utils/errors.js';
+import { sendSuccess } from "../../utils/responses.js";
+import { getPaginationParams, getPaginationMeta } from "../../utils/pagination.js";
+import { AuthenticationError, ExternalServiceError, DatabaseError } from "../../utils/errors.js";
 
 /**
  * Get Gmail messages with pagination and filtering
- * 
+ *
  * @param {object} googleOAuth - Google OAuth service instance
  * @param {object} prisma - Prisma client instance
  * @returns {function} Express route handler
@@ -21,38 +17,38 @@ export const getMessagesController = (googleOAuth, prisma) => async (req, res) =
   try {
     // Build database query filters
     const whereClause = { user_id: userId };
-    
+
     // Add filter logic based on the filter parameter
-    if (filter === 'recent') {
+    if (filter === "recent") {
       // Show emails from last 7 days
       const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
       whereClause.received_at = { gte: sevenDaysAgo };
-    } else if (filter === 'unread') {
+    } else if (filter === "unread") {
       // Show only unread emails
       whereClause.is_read = false;
-    } else if (filter === 'important') {
+    } else if (filter === "important") {
       // Show only important emails
       whereClause.is_important = true;
     }
-    
+
     // Add search filter if provided (PostgreSQL supports case-insensitive search natively)
     if (search) {
       whereClause.OR = [
-        { subject: { contains: search, mode: 'insensitive' } },
-        { body: { contains: search, mode: 'insensitive' } },
-        { sender_name: { contains: search, mode: 'insensitive' } },
-        { sender_email: { contains: search, mode: 'insensitive' } }
+        { subject: { contains: search, mode: "insensitive" } },
+        { body: { contains: search, mode: "insensitive" } },
+        { sender_name: { contains: search, mode: "insensitive" } },
+        { sender_email: { contains: search, mode: "insensitive" } }
       ];
     }
-    
+
     // Get paginated results from database
     const [messages, total] = await Promise.all([
       prisma.email.findMany({
         where: whereClause,
         skip: pagination.skip,
         take: pagination.limit,
-        orderBy: { received_at: 'desc' }
+        orderBy: { received_at: "desc" }
       }),
       prisma.email.count({ where: whereClause })
     ]);
@@ -75,14 +71,10 @@ export const getMessagesController = (googleOAuth, prisma) => async (req, res) =
     }));
 
     // Send response
-    sendSuccess(res, 
-      { messages: transformedMessages }, 
-      paginationMeta
-    );
-
+    sendSuccess(res, { messages: transformedMessages }, paginationMeta);
   } catch (error) {
-    if (error.code && error.code.startsWith('P')) {
-      throw new DatabaseError('Failed to access messages', 'getMessages', error);
+    if (error.code && error.code.startsWith("P")) {
+      throw new DatabaseError("Failed to access messages", "getMessages", error);
     }
     throw error;
   }

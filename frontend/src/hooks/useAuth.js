@@ -1,16 +1,16 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { api } from '@/lib/api';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useNavigate, useLocation } from "react-router-dom";
+import { api } from "@/lib/api";
 
 /**
  * Comprehensive authentication hook using React Query
- * 
+ *
  * This hook provides all authentication functionality:
  * - Authentication state (isAuthenticated, user)
  * - Loading and error states
  * - Login and logout methods
  * - OAuth callback handling
- * 
+ *
  * @returns {Object} Authentication state and methods
  */
 export const useAuth = () => {
@@ -19,19 +19,19 @@ export const useAuth = () => {
   const location = useLocation();
 
   // Get authentication status
-  const { 
-    data: authData, 
-    isLoading, 
+  const {
+    data: authData,
+    isLoading,
     error: authError,
     refetch: refreshAuthStatus
   } = useQuery({
-    queryKey: ['auth', 'status'],
+    queryKey: ["auth", "status"],
     queryFn: api.getAuthStatus,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    retry: false,
+    retry: false
   });
 
-  console.log('Auth data:', authData);
+  console.log("Auth data:", authData);
 
   // Extract authentication data
   const isAuthenticated = authData?.isAuthenticated || false;
@@ -40,16 +40,16 @@ export const useAuth = () => {
   // Login mutation
   const loginMutation = useMutation({
     mutationFn: api.getGoogleAuthUrl,
-    onSuccess: (data) => {
+    onSuccess: data => {
       if (data.authUrl) {
         window.location.href = data.authUrl;
       } else {
-        throw new Error('Failed to get authentication URL');
+        throw new Error("Failed to get authentication URL");
       }
     },
-    onError: (error) => {
-      console.error('Login failed:', error);
-    },
+    onError: error => {
+      console.error("Login failed:", error);
+    }
   });
 
   // Logout mutation
@@ -58,15 +58,15 @@ export const useAuth = () => {
     onSuccess: () => {
       // Clear all cached data
       queryClient.clear();
-      
+
       // Navigate to login page
-      navigate('/login', { replace: true });
+      navigate("/login", { replace: true });
     },
-    onError: (error) => {
-      console.error('Logout failed:', error);
+    onError: error => {
+      console.error("Logout failed:", error);
       // Still navigate to login page
-      navigate('/login', { replace: true });
-    },
+      navigate("/login", { replace: true });
+    }
   });
 
   /**
@@ -77,13 +77,16 @@ export const useAuth = () => {
     try {
       // Refresh authentication status
       await refreshAuthStatus();
-      
+
       // Redirect to intended destination or default to home
-      const from = location.state?.from?.pathname || '/';
+      const from = location.state?.from?.pathname || "/";
       navigate(from, { replace: true });
     } catch (error) {
-      console.error('Error handling auth callback:', error);
-      navigate('/login', { replace: true, state: { error: 'Authentication failed. Please try again.' } });
+      console.error("Error handling auth callback:", error);
+      navigate("/login", {
+        replace: true,
+        state: { error: "Authentication failed. Please try again." }
+      });
     }
   };
 
@@ -95,14 +98,14 @@ export const useAuth = () => {
     isAuthenticated,
     isLoading,
     user,
-    error: error ? error.message || 'Authentication error' : null,
-    
+    error: error ? error.message || "Authentication error" : null,
+
     // Authentication methods
     login: () => loginMutation.mutate(),
     logout: () => logoutMutation.mutate(),
     refreshAuthStatus,
     handleAuthCallback,
-    
+
     // Raw state (for advanced use cases)
     loginMutation,
     logoutMutation,
@@ -114,7 +117,7 @@ export const useAuth = () => {
  * @deprecated Use the main useAuth hook instead
  */
 export const useGoogleAuthUrl = () => {
-  console.warn('useGoogleAuthUrl is deprecated. Use useAuth().login instead.');
+  console.warn("useGoogleAuthUrl is deprecated. Use useAuth().login instead.");
   const { login, loginMutation } = useAuth();
   return {
     ...loginMutation,
@@ -126,7 +129,7 @@ export const useGoogleAuthUrl = () => {
  * @deprecated Use the main useAuth hook instead
  */
 export const useLogout = () => {
-  console.warn('useLogout is deprecated. Use useAuth().logout instead.');
+  console.warn("useLogout is deprecated. Use useAuth().logout instead.");
   const { logout, logoutMutation } = useAuth();
   return {
     ...logoutMutation,
@@ -141,7 +144,7 @@ export const useLogout = () => {
 // Export a function to get auth state from queryClient (for non-component code)
 export const getAuthState = () => {
   const queryClient = useQueryClient();
-  const authData = queryClient.getQueryData(['auth', 'status']);
+  const authData = queryClient.getQueryData(["auth", "status"]);
   return {
     isAuthenticated: authData?.isAuthenticated || false,
     user: authData?.user || null

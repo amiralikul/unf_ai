@@ -1,12 +1,9 @@
-import { sendSuccess } from '../../utils/responses.js';
-import { 
-  NotFoundError, 
-  DatabaseError
-} from '../../utils/errors.js';
+import { sendSuccess } from "../../utils/responses.js";
+import { NotFoundError, DatabaseError } from "../../utils/errors.js";
 
 /**
  * Get a specific Google Drive file by ID
- * 
+ *
  * @param {object} googleOAuth - Google OAuth service instance
  * @param {object} prisma - Prisma client instance
  * @returns {function} Express route handler
@@ -26,7 +23,7 @@ export const getFileByIdController = (googleOAuth, prisma) => async (req, res) =
 
     // Check if file exists
     if (!file) {
-      throw new NotFoundError('File not found or access denied', 'FILE_NOT_FOUND');
+      throw new NotFoundError("File not found or access denied", "FILE_NOT_FOUND");
     }
 
     // Transform response to match frontend expectations
@@ -38,10 +35,9 @@ export const getFileByIdController = (googleOAuth, prisma) => async (req, res) =
 
     // Send response
     sendSuccess(res, { file: transformedFile });
-
   } catch (error) {
-    if (error.code && error.code.startsWith('P')) {
-      throw new DatabaseError('Failed to access file', 'getFileById', error);
+    if (error.code && error.code.startsWith("P")) {
+      throw new DatabaseError("Failed to access file", "getFileById", error);
     }
     throw error;
   }
