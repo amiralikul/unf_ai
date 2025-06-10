@@ -8,7 +8,6 @@
 // Import controllers
 import { controllers } from '../controllers/index.js';
 import { getBoardsController } from '../controllers/trello/getBoards.js';
-import { processQueryController } from '../controllers/ai/processQuery.js';
 
 // Example 1: Using controllers from the main container
 async function exampleApiRoute(req, res) {
@@ -40,41 +39,23 @@ function exampleTestSetup() {
   return { controller, mockTrelloService, mockPrisma };
 }
 
-// Example 3: Using a controller with custom error handling
+// Example 3: Using AI NL-to-SQL controller with error handling
 async function exampleWithErrorHandling(req, res, next) {
   try {
-    // Use the controller
-    await controllers.ai.processQuery(req, res);
+    // Use the modern NL-to-SQL controller
+    await controllers.ai.nlToSql(req, res);
   } catch (error) {
     // Custom error handling
-    console.error('Error processing AI query:', error);
+    console.error('Error processing NL-to-SQL query:', error);
     res.status(500).json({
       success: false,
       error: 'An error occurred while processing your query',
-      code: 'AI_PROCESSING_ERROR'
+      code: 'NL_TO_SQL_ERROR'
     });
   }
 }
 
-// Example 4: Creating a controller with custom dependencies for production
-function createCustomAIController() {
-  // Custom OpenAI instance with different configuration
-  const customOpenAI = new OpenAI({
-    apiKey: process.env.CUSTOM_OPENAI_API_KEY,
-    maxRetries: 5,
-    timeout: 30000
-  });
-  
-  // Custom Prisma instance with logging
-  const customPrisma = new PrismaClient({
-    log: ['query', 'info', 'warn', 'error']
-  });
-  
-  // Create controller with custom dependencies
-  return processQueryController(customOpenAI, customPrisma);
-}
-
-// Example 5: Middleware composition with functional controllers
+// Example 4: Middleware composition with functional controllers
 function createProtectedRoute(controller) {
   return [
     // Authentication middleware
@@ -94,14 +75,13 @@ function createProtectedRoute(controller) {
   ];
 }
 
-// Usage of middleware composition
-const protectedAIQueryRoute = createProtectedRoute(controllers.ai.processQuery);
+// Usage of middleware composition with NL-to-SQL
+const protectedNlToSqlRoute = createProtectedRoute(controllers.ai.nlToSql);
 
 // Export examples for documentation
 export {
   exampleApiRoute,
   exampleTestSetup,
   exampleWithErrorHandling,
-  createCustomAIController,
   createProtectedRoute
 };

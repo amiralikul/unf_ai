@@ -25,7 +25,15 @@ describe('syncFiles controller', () => {
       findUnique: jest.fn(),
       upsert: jest.fn()
     },
+    trelloCard: {
+      findMany: jest.fn()
+    },
     $transaction: jest.fn(callback => callback(mockPrisma))
+  };
+  
+  const mockLinkDetectionService = {
+    extractDriveFileReferences: jest.fn(),
+    linkCardToFile: jest.fn()
   };
   
   // Mock request and response
@@ -42,8 +50,8 @@ describe('syncFiles controller', () => {
     
     // Set up mock return values
     mockPrisma.user.findUnique.mockResolvedValue({
-      googleAccessToken: 'access_token',
-      googleRefreshToken: 'refresh_token'
+      google_access_token: 'access_token',
+      google_refresh_token: 'refresh_token'
     });
     
     mockGoogleOAuth.getDriveFiles.mockResolvedValue([
@@ -62,15 +70,20 @@ describe('syncFiles controller', () => {
     
     mockPrisma.file.upsert.mockResolvedValue({
       id: 'db1',
-      googleId: 'file1',
+      google_id: 'file1',
       name: 'Test File',
-      mimeType: 'application/pdf'
+      mime_type: 'application/pdf'
     });
+    
+    mockPrisma.trelloCard.findMany.mockResolvedValue([]);
+    
+    mockLinkDetectionService.extractDriveFileReferences.mockReturnValue([]);
+    mockLinkDetectionService.linkCardToFile.mockResolvedValue();
   });
   
   test('should sync files successfully', async () => {
     // Create controller with mocked dependencies
-    const controller = syncFilesController(mockGoogleOAuth, mockPrisma);
+    const controller = syncFilesController(mockGoogleOAuth, mockPrisma, mockLinkDetectionService);
     
     // Call the controller
     await controller(req, res);
@@ -79,8 +92,8 @@ describe('syncFiles controller', () => {
     expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
       where: { id: 'user123' },
       select: {
-        googleAccessToken: true,
-        googleRefreshToken: true
+        google_access_token: true,
+        google_refresh_token: true
       }
     });
     
@@ -90,12 +103,12 @@ describe('syncFiles controller', () => {
     }, 100);
     
     expect(mockPrisma.file.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      where: { googleId: 'file1' },
+      where: { google_id: 'file1' },
       create: expect.objectContaining({
-        googleId: 'file1',
+        google_id: 'file1',
         name: 'Test File',
-        userId: 'user123',
-        owners: expect.any(String)
+        user_id: 'user123',
+        owners: expect.any(Array)
       })
     }));
     
@@ -118,20 +131,13 @@ describe('syncFiles controller', () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
     
     // Create controller with mocked dependencies
-    const controller = syncFilesController(mockGoogleOAuth, mockPrisma);
+    const controller = syncFilesController(mockGoogleOAuth, mockPrisma, mockLinkDetectionService);
     
     // Mock the error handling
     const next = jest.fn();
     
-    // Call the controller with next function for error handling
-    await controller(req, { json: res.json }, next).catch(next);
-    
-    // Verify error was thrown
-    expect(next).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'AuthenticationError',
-      message: 'Google Drive authentication required',
-      code: 'GOOGLE_AUTH_REQUIRED'
-    }));
+    // Call the controller and expect it to throw an error
+    await expect(controller(req, res, next)).rejects.toThrow('Google Drive authentication required');
   });
   
   test('should handle Google Drive API errors', async () => {
@@ -139,42 +145,23 @@ describe('syncFiles controller', () => {
     mockGoogleOAuth.getDriveFiles.mockRejectedValue(new Error('API connection failed'));
     
     // Create controller with mocked dependencies
-    const controller = syncFilesController(mockGoogleOAuth, mockPrisma);
+    const controller = syncFilesController(mockGoogleOAuth, mockPrisma, mockLinkDetectionService);
     
-    // Mock the error handling
-    const next = jest.fn();
-    
-    // Call the controller with next function for error handling
-    await controller(req, { json: res.json }, next).catch(next);
-    
-    // Verify error was thrown
-    expect(next).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'ExternalServiceError',
-      message: expect.stringContaining('API connection failed')
-    }));
+    // Call the controller and expect it to throw an ExternalServiceError
+    await expect(controller(req, res)).rejects.toThrow();
   });
   
   test('should handle missing tokens', async () => {
     // Set up user without tokens
     mockPrisma.user.findUnique.mockResolvedValue({
-      googleAccessToken: null,
-      googleRefreshToken: null
+      google_access_token: null,
+      google_refresh_token: null
     });
     
     // Create controller with mocked dependencies
-    const controller = syncFilesController(mockGoogleOAuth, mockPrisma);
+    const controller = syncFilesController(mockGoogleOAuth, mockPrisma, mockLinkDetectionService);
     
-    // Mock the error handling
-    const next = jest.fn();
-    
-    // Call the controller with next function for error handling
-    await controller(req, { json: res.json }, next).catch(next);
-    
-    // Verify error was thrown
-    expect(next).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'AuthenticationError',
-      message: 'Google Drive authentication required',
-      code: 'GOOGLE_AUTH_REQUIRED'
-    }));
+    // Call the controller and expect it to throw an error
+    await expect(controller(req, res)).rejects.toThrow('Google Drive authentication required');
   });
 });

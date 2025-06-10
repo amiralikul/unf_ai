@@ -68,7 +68,7 @@ Background jobs sync external API data to local database for performance and que
 Controllers are factory functions that inject dependencies:
 ```javascript
 export const createAIControllers = ({ openai, prisma }) => ({
-  processQuery: processQueryController(openai, prisma),
+      nlToSql: langchainNlToSqlController(openai, prisma, langchainService),
   getQueryHistory: getQueryHistoryController(prisma)
 });
 ```

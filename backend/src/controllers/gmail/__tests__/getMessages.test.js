@@ -40,33 +40,33 @@ describe('getMessages controller', () => {
     mockPrisma.email.findMany.mockResolvedValue([
       {
         id: 'db1',
-        googleId: 'msg1',
+        google_id: 'msg1',
         subject: 'Test Email 1',
         sender: 'sender1@example.com',
-        senderName: 'Sender One',
-        senderEmail: 'sender1@example.com',
+        sender_name: 'Sender One',
+        sender_email: 'sender1@example.com',
         recipient: 'recipient@example.com',
-        recipientName: 'Recipient',
-        recipientEmail: 'recipient@example.com',
+        recipient_name: 'Recipient',
+        recipient_email: 'recipient@example.com',
         snippet: 'This is a test email',
-        receivedAt: new Date('2025-06-01'),
-        isRead: true,
-        isImportant: false
+        received_at: new Date('2025-06-01'),
+        is_read: true,
+        is_important: false
       },
       {
         id: 'db2',
-        googleId: 'msg2',
+        google_id: 'msg2',
         subject: 'Test Email 2',
         sender: 'sender2@example.com',
-        senderName: 'Sender Two',
-        senderEmail: 'sender2@example.com',
+        sender_name: 'Sender Two',
+        sender_email: 'sender2@example.com',
         recipient: 'recipient@example.com',
-        recipientName: 'Recipient',
-        recipientEmail: 'recipient@example.com',
+        recipient_name: 'Recipient',
+        recipient_email: 'recipient@example.com',
         snippet: 'Another test email',
-        receivedAt: new Date('2025-06-02'),
-        isRead: false,
-        isImportant: true
+        received_at: new Date('2025-06-02'),
+        is_read: false,
+        is_important: true
       }
     ]);
     
@@ -82,13 +82,13 @@ describe('getMessages controller', () => {
 
     // Verify dependencies were called correctly
     expect(mockPrisma.email.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { userId: 'user123' },
+      where: { user_id: 'user123' },
       skip: 0,
       take: 10,
-      orderBy: { receivedAt: 'desc' }
+      orderBy: { received_at: 'desc' }
     }));
 
-    expect(mockPrisma.email.count).toHaveBeenCalledWith({ where: { userId: 'user123' } });
+    expect(mockPrisma.email.count).toHaveBeenCalledWith({ where: { user_id: 'user123' } });
 
     // Verify response
     expect(res.json).toHaveBeenCalledWith(expect.objectContaining({
@@ -134,13 +134,13 @@ describe('getMessages controller', () => {
     // Verify filters were applied correctly
     expect(mockPrisma.email.findMany).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({
-        userId: 'user123',
-        isRead: false,
+        user_id: 'user123',
+        is_read: false,
         OR: [
           { subject: { contains: 'important', mode: 'insensitive' } },
           { body: { contains: 'important', mode: 'insensitive' } },
-          { senderName: { contains: 'important', mode: 'insensitive' } },
-          { senderEmail: { contains: 'important', mode: 'insensitive' } }
+          { sender_name: { contains: 'important', mode: 'insensitive' } },
+          { sender_email: { contains: 'important', mode: 'insensitive' } }
         ]
       })
     }));

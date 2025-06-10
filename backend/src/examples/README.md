@@ -38,15 +38,15 @@ expect(mockTrelloService.getBoards).toHaveBeenCalledWith('test-key', 'test-token
 
 ```javascript
 try {
-  // Use the controller
-  await controllers.ai.processQuery(req, res);
+  // Use the modern NL-to-SQL controller
+  await controllers.ai.nlToSql(req, res);
 } catch (error) {
   // Custom error handling
-  console.error('Error processing AI query:', error);
+  console.error('Error processing NL-to-SQL query:', error);
   res.status(500).json({
     success: false,
     error: 'An error occurred while processing your query',
-    code: 'AI_PROCESSING_ERROR'
+    code: 'NL_TO_SQL_ERROR'
   });
 }
 ```
@@ -54,15 +54,20 @@ try {
 ### 4. Custom Dependencies for Production
 
 ```javascript
-// Create custom dependencies
+// Create custom dependencies for NL-to-SQL
 const customOpenAI = new OpenAI({
   apiKey: process.env.CUSTOM_OPENAI_API_KEY,
   maxRetries: 5,
   timeout: 30000
 });
 
+const customLangchainService = new LangChainSqlService(
+  process.env.OPENAI_API_KEY, 
+  customPrisma
+);
+
 // Create controller with custom dependencies
-const customController = processQueryController(customOpenAI, customPrisma);
+const customController = langchainNlToSqlController(customOpenAI, customPrisma, customLangchainService);
 ```
 
 ### 5. Middleware Composition
@@ -72,11 +77,38 @@ const customController = processQueryController(customOpenAI, customPrisma);
 const protectedRoute = [
   authMiddleware,
   rateLimitingMiddleware,
-  controllers.ai.processQuery
+  controllers.ai.nlToSql
 ];
 
 // Use in Express
-router.post('/api/ai/query', protectedRoute);
+router.post('/api/ai/nl-to-sql', protectedRoute);
+```
+
+### 6. Using controllers from the main container
+
+```javascript
+// Using controllers from the main container
+await controllers.ai.nlToSql(req, res);
+```
+
+### 7. Custom controller creation for different services
+
+```javascript
+// Custom controller creation for different services
+const createCustomNlToSqlController = () => {
+  // Custom dependencies
+  const customOpenAI = new OpenAI({ apiKey: process.env.CUSTOM_OPENAI_API_KEY });
+  const customPrisma = new PrismaClient({ log: ['query'] });
+  const customLangchainService = new LangChainSqlService(process.env.OPENAI_API_KEY, customPrisma);
+  
+  return langchainNlToSqlController(customOpenAI, customPrisma, customLangchainService);
+};
+
+// Usage in routes
+app.post('/api/ai/nl-to-sql', 
+  validateBody(nlToSqlSchema),
+  asyncHandler(controllers.ai.nlToSql)
+);
 ```
 
 ## Running the Examples

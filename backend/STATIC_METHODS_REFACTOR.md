@@ -7,7 +7,7 @@ This guide provides step-by-step instructions for refactoring the remaining stat
 So far, we've refactored:
 
 1. **AI Controllers**
-   - `processQuery`
+   - `nlToSql` (LangChain-based)
    - `getQueryHistory`
    - `getUsageStats`
 

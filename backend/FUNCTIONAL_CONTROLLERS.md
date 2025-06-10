@@ -20,9 +20,7 @@ We've adopted a functional approach to controllers with explicit dependency inje
     /controllers
       /ai                  # AI controllers (refactored to functional approach)
         index.js           # Exports all AI controllers
-        processQuery.js    # Individual controller functions
-        getQueryHistory.js
-        getUsageStats.js
+        langchainNlToSqlController.js  # NL-to-SQL controller functions
         /__tests__         # Tests for AI controllers
       /drive               # Drive controllers (to be refactored)
       /gmail               # Gmail controllers (to be refactored)
@@ -42,9 +40,9 @@ We've adopted a functional approach to controllers with explicit dependency inje
 Each controller is implemented as a factory function that takes dependencies and returns a route handler:
 
 ```javascript
-// controllers/ai/processQuery.js
-export const processQueryController = (openai, prisma) => async (req, res) => {
-  // Implementation
+// controllers/ai/langchainNlToSqlController.js
+export const langchainNlToSqlController = (openai, prisma, langchainService) => async (req, res) => {
+  // Implementation using NL-to-SQL with LangChain
 };
 ```
 
@@ -81,9 +79,9 @@ Routes use the controllers from the dependency injection container:
 
 ```javascript
 // api/ai.js
-router.post('/query',
-  validateBody(aiQuerySchema),
-  asyncHandler(controllers.ai.processQuery)
+router.post('/nl-to-sql',
+  validateBody(nlToSqlSchema),
+  asyncHandler(controllers.ai.nlToSql)
 );
 ```
 
@@ -92,10 +90,10 @@ router.post('/query',
 The functional approach makes testing much easier:
 
 ```javascript
-// controllers/ai/__tests__/processQuery.test.js
-test('should process query and return AI response', async () => {
+// controllers/ai/__tests__/langchainNlToSqlController.test.js
+test('should process NL query and return SQL results', async () => {
   // Create controller with mocked dependencies
-  const controller = processQueryController(mockOpenAI, mockPrisma);
+  const controller = langchainNlToSqlController(mockOpenAI, mockPrisma, mockLangchainService);
   
   // Call the controller
   await controller(req, res);
