@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-class TrelloService {
+export class TrelloService {
   constructor() {
     this.baseUrl = 'https://api.trello.com/1';
   }
@@ -114,6 +114,4 @@ class TrelloService {
     
     return 'Medium'; // Default priority
   }
-}
-
-export default new TrelloService(); 
+} 

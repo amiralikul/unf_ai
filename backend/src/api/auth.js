@@ -1,10 +1,7 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
-import googleOAuthService from '../services/GoogleOAuthService.js';
-import sessionService from '../services/SessionService.js';
+import { services } from '../controllers/index.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
 // Middleware to check authentication
 export const requireAuth = async (req, res, next) => {
@@ -21,7 +18,7 @@ export const requireAuth = async (req, res, next) => {
   
   console.log(`🔐 Auth check: session=${sessionId.substring(0, 10)}...`);
   
-  const session = await sessionService.getSession(sessionId);
+  const session = await services.sessionService.getSession(sessionId);
   
   if (!session) {
     console.log(`❌ Authentication failed: invalid or expired session`);
@@ -40,7 +37,7 @@ export const requireAuth = async (req, res, next) => {
 // Start Google OAuth flow
 router.get('/google', (req, res) => {
   try {
-    const authUrl = googleOAuthService.getAuthUrl();
+    const authUrl = services.googleOAuth.getAuthUrl();
     res.json({ authUrl });
   } catch (error) {
     console.error('Error generating auth URL:', error);
@@ -58,18 +55,18 @@ router.get('/google/callback', async (req, res) => {
 
   try {
     // Exchange code for tokens
-    const tokens = await googleOAuthService.getTokens(code);
+    const tokens = await services.googleOAuth.getTokens(code);
 
     // Get user info
-    const userInfo = await googleOAuthService.getUserInfo(tokens);
+    const userInfo = await services.googleOAuth.getUserInfo(tokens);
     
     // Find or create user in database
-    let user = await prisma.user.findUnique({
+    let user = await services.prisma.user.findUnique({
       where: { email: userInfo.email }
     });
 
     if (!user) {
-      user = await prisma.user.create({
+      user = await services.prisma.user.create({
         data: {
           email: userInfo.email,
           name: userInfo.name,
@@ -79,7 +76,7 @@ router.get('/google/callback', async (req, res) => {
       });
     } else {
       // Update tokens
-      user = await prisma.user.update({
+      user = await services.prisma.user.update({
         where: { id: user.id },
         data: {
           google_access_token: tokens.access_token,
@@ -89,7 +86,7 @@ router.get('/google/callback', async (req, res) => {
     }
 
     // Create session
-    const sessionId = await sessionService.createSession({
+    const sessionId = await services.sessionService.createSession({
       userId: user.id,
       email: user.email,
       name: user.name
@@ -117,7 +114,7 @@ router.get('/google/callback', async (req, res) => {
 // Logout
 router.post('/logout', requireAuth, async (req, res) => {
   const { sessionId } = req.cookies;
-  await sessionService.deleteSession(sessionId);
+  await services.sessionService.deleteSession(sessionId);
   res.clearCookie('sessionId');
   res.json({ message: 'Logged out successfully' });
 });
@@ -125,7 +122,7 @@ router.post('/logout', requireAuth, async (req, res) => {
 // Get authentication status and user info
 router.get('/status', async (req, res) => {
   const { sessionId } = req.cookies;
-  const session = await sessionService.getSession(sessionId);
+  const session = await services.sessionService.getSession(sessionId);
   
   console.log(`📊 Auth status check: session=${sessionId ? sessionId.substring(0, 10) + '...' : 'none'}, valid=${!!session}`);
   
@@ -134,7 +131,7 @@ router.get('/status', async (req, res) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({
+    const user = await services.prisma.user.findUnique({
       where: { id: session.userId },
       select: {
         id: true,
@@ -149,7 +146,7 @@ router.get('/status', async (req, res) => {
 
     if (!user) {
       // This is a defensive check in case the user was deleted but the session wasn't.
-      await sessionService.deleteSession(sessionId);
+      await services.sessionService.deleteSession(sessionId);
       res.clearCookie('sessionId');
       return res.json({ isAuthenticated: false, user: null });
     }
@@ -183,7 +180,7 @@ router.post('/trello-credentials', requireAuth, async (req, res) => {
 
   try {
     // Update user's Trello credentials
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await services.prisma.user.update({
       where: { id: userId },
       data: {
         trello_api_key: trelloApiKey,

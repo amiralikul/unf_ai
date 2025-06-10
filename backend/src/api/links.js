@@ -1,14 +1,13 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { services } from '../controllers/index.js';
 import { createLinkControllers } from '../controllers/links/index.js';
 import { requireAuth } from './auth.js';
 import { asyncHandler } from '../middleware/errorHandler.js';
 
 const router = express.Router();
-const prisma = new PrismaClient();
 
-// Create controller instances
-const linkControllers = createLinkControllers(prisma);
+// Create controller instances using centralized services
+const linkControllers = createLinkControllers(services.prisma);
 
 // Apply authentication middleware to all routes
 router.use(requireAuth);

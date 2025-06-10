@@ -6,10 +6,10 @@ import langchainControllers from './langchainNlToSqlController.js';
  * @param {object} dependencies - Controller dependencies
  * @returns {object} AI controllers
  */
-export const createAIControllers = ({ openai, prisma }) => ({
+export const createAIControllers = ({ openai, prisma, langchainService }) => ({
   // LangChain-based NL-to-SQL controllers
-  nlToSql: langchainControllers.langchainNlToSql(openai, prisma),
-  nlToSqlHealth: langchainControllers.langchainNlToSqlHealth(openai, prisma)
+  nlToSql: langchainControllers.langchainNlToSql(openai, prisma, langchainService),
+  nlToSqlHealth: langchainControllers.langchainNlToSqlHealth(openai, prisma, langchainService)
 });
 
 export {

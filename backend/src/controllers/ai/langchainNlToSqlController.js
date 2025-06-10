@@ -5,7 +5,6 @@ import {
   DatabaseError,
   ValidationError 
 } from '../../utils/errors.js';
-import LangChainSqlService from '../../services/LangChainSqlService.js';
 
 /**
  * LangChain-based natural language to SQL controller
@@ -13,9 +12,10 @@ import LangChainSqlService from '../../services/LangChainSqlService.js';
  * 
  * @param {object} openai - OpenAI client instance (for compatibility)
  * @param {object} prisma - Prisma client instance
+ * @param {object} langchainService - LangChain SQL service instance
  * @returns {function} Express route handler
  */
-export const langchainNlToSqlController = (openai, prisma) => async (req, res) => {
+export const langchainNlToSqlController = (openai, prisma, langchainService) => async (req, res) => {
   const { question } = req.body;
   const userId = req.user.userId;
 
@@ -32,12 +32,6 @@ export const langchainNlToSqlController = (openai, prisma) => async (req, res) =
     if (!process.env.DATABASE_URL) {
       throw new ValidationError('Database URL not configured');
     }
-
-    // Initialize LangChain SQL service
-    const langchainService = new LangChainSqlService(
-      process.env.OPENAI_API_KEY,
-      prisma
-    );
 
     let sqlResult;
 
@@ -150,9 +144,10 @@ export const langchainNlToSqlController = (openai, prisma) => async (req, res) =
  * 
  * @param {object} openai - OpenAI client instance (for compatibility)
  * @param {object} prisma - Prisma client instance
+ * @param {object} langchainService - LangChain SQL service instance
  * @returns {function} Express route handler
  */
-export const langchainNlToSqlHealthController = (openai, prisma) => async (req, res) => {
+export const langchainNlToSqlHealthController = (openai, prisma, langchainService) => async (req, res) => {
   try {
     const checks = {
       openaiKey: !!process.env.OPENAI_API_KEY,
@@ -171,10 +166,6 @@ export const langchainNlToSqlHealthController = (openai, prisma) => async (req, 
 
     // Test LangChain service initialization
     try {
-      const langchainService = new LangChainSqlService(
-        process.env.OPENAI_API_KEY,
-        prisma
-      );
       const healthResult = await langchainService.healthCheck();
       checks.langchainService = healthResult.status === 'healthy';
       checks.langchainDetails = healthResult;

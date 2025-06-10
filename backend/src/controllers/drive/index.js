@@ -10,10 +10,10 @@ import deleteFileController from './deleteFile.js';
  * @param {object} dependencies - Controller dependencies
  * @returns {object} Drive controllers
  */
-export const createDriveControllers = ({ googleOAuth, prisma }) => ({
+export const createDriveControllers = ({ googleOAuth, prisma, linkDetectionService }) => ({
   getFiles: getFilesController(googleOAuth, prisma),
   getFileById: getFileByIdController(googleOAuth, prisma),
-  syncFiles: syncFilesController(googleOAuth, prisma),
+  syncFiles: syncFilesController(googleOAuth, prisma, linkDetectionService),
   updateFile: updateFileController(googleOAuth, prisma),
   deleteFile: deleteFileController(googleOAuth, prisma)
 });

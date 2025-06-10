@@ -1,7 +1,7 @@
 import { google } from 'googleapis';
 import addressparser from 'addressparser';
 
-class GoogleOAuthService {
+export class GoogleOAuthService {
   constructor() {
     this.oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,

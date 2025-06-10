@@ -4,18 +4,17 @@ import {
   ExternalServiceError, 
   DatabaseError
 } from '../../utils/errors.js';
-import { LinkDetectionService } from '../../services/LinkDetectionService.js';
 
 /**
  * Sync Google Drive files from the API
  * 
  * @param {object} googleOAuth - Google OAuth service instance
  * @param {object} prisma - Prisma client instance
+ * @param {object} linkDetectionService - Link detection service instance
  * @returns {function} Express route handler
  */
-export const syncFilesController = (googleOAuth, prisma) => async (req, res) => {
+export const syncFilesController = (googleOAuth, prisma, linkDetectionService) => async (req, res) => {
   const userId = req.user.userId;
-  const linkDetectionService = new LinkDetectionService(prisma);
 
   try {
     // Get user tokens from database

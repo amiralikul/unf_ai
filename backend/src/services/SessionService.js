@@ -1,10 +1,9 @@
-import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
 
 // Database-backed session store (survives server restarts)
-class SessionService {
-  constructor() {
-    this.prisma = new PrismaClient();
+export class SessionService {
+  constructor(prisma) {
+    this.prisma = prisma;
     
     // Start automatic cleanup every 30 minutes
     this.startCleanupInterval();
@@ -163,9 +162,4 @@ class SessionService {
   async shutdown() {
     await this.prisma.$disconnect();
   }
-}
-
-// Create singleton instance
-const sessionService = new SessionService();
-
-export default sessionService; 
+} 

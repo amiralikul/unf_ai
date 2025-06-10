@@ -10,10 +10,10 @@ import deleteMessageController from './deleteMessage.js';
  * @param {object} dependencies - Controller dependencies
  * @returns {object} Gmail controllers
  */
-export const createGmailControllers = ({ googleOAuth, prisma }) => ({
+export const createGmailControllers = ({ googleOAuth, prisma, linkDetectionService }) => ({
   getMessages: getMessagesController(googleOAuth, prisma),
   getMessageById: getMessageByIdController(googleOAuth, prisma),
-  syncMessages: syncMessagesController(googleOAuth, prisma),
+  syncMessages: syncMessagesController(googleOAuth, prisma, linkDetectionService),
   updateMessage: updateMessageController(googleOAuth, prisma),
   deleteMessage: deleteMessageController(googleOAuth, prisma)
 });

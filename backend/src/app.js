@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
-import { PrismaClient } from '@prisma/client';
 
 // Import routes
 import authRoutes from './api/auth.js';
@@ -20,15 +19,14 @@ import {
   requestLogger
 } from './middleware/errorHandler.js';
 
-// Import services
-import sessionService from './services/SessionService.js';
+// Import centralized services
+import { services } from './controllers/index.js';
 
 // Load environment variables
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3001;
-const prisma = new PrismaClient();
 
 // Middleware
 app.use(requestIdMiddleware);
@@ -44,8 +42,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
-    const activeSessions = await sessionService.getSessionCount();
-    const dbStatus = await prisma.$queryRaw`SELECT 1 as test`;
+    const activeSessions = await services.sessionService.getSessionCount();
+    const dbStatus = await services.prisma.$queryRaw`SELECT 1 as test`;
 
     res.json({
       success: true,
@@ -80,7 +78,7 @@ if (process.env.NODE_ENV !== 'production') {
   app.get('/debug/sessions', async (req, res) => {
     try {
       const { sessionId } = req.cookies;
-      const session = await sessionService.getSession(sessionId);
+      const session = await services.sessionService.getSession(sessionId);
 
       res.json({
         success: true,
@@ -89,7 +87,7 @@ if (process.env.NODE_ENV !== 'production') {
           sessionId: sessionId ? `${sessionId.substring(0, 10)}...` : 'none',
           sessionExistsInStore: !!session,
           sessionData: session ? { email: session.email, userId: session.userId } : null,
-          totalSessions: await sessionService.getSessionCount()
+          totalSessions: await services.sessionService.getSessionCount()
         }
       });
     } catch (error) {
@@ -111,10 +109,10 @@ const gracefulShutdown = async (signal) => {
 
   try {
     console.log('🔌 Disconnecting from database...');
-    await prisma.$disconnect();
+    await services.prisma.$disconnect();
 
     console.log('🔐 Shutting down session service...');
-    await sessionService.shutdown();
+    await services.sessionService.shutdown();
 
     console.log('✅ Graceful shutdown completed');
     process.exit(0);
